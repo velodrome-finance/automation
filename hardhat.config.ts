@@ -5,6 +5,7 @@ import "@gelatonetwork/web3-functions-sdk/hardhat-plugin";
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
+import "@nomicfoundation/hardhat-foundry";
 import "hardhat-deploy";
 import "@matterlabs/hardhat-zksync-solc";
 import "@matterlabs/hardhat-zksync-verify";
