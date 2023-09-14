@@ -18,6 +18,7 @@ dist
 artifacts
 artifacts-zk
 cache
+cache_hardhat
 cache-zk
 coverage
 coverage.json
