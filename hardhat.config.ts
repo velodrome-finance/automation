@@ -47,8 +47,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_ID}`,
-        blockNumber: 8664000,
+        url: "https://rpc.ankr.com/optimism",
+        blockNumber: 109516692,
       },
     },
 
