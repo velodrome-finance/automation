@@ -15,6 +15,7 @@ import {
   abi as registryAbi
 } from "../../artifacts/src/Registry.sol/Registry.json";
 import { Contract } from "@ethersproject/contracts";
+import { AbiCoder } from "@ethersproject/abi";
 
 // Relay Token Information
 interface RelayToken {
@@ -32,10 +33,18 @@ interface RelayInfo {
     tokens: RelayToken[];
 }
 
+interface TxData {
+    to: string;
+    data: string;
+
+}
+
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { userArgs, multiChainProvider } = context;
 
   const provider = multiChainProvider.default();
+
+  const abiCoder = new AbiCoder();
 
   const TOKEN_ABI = [
     "function balanceOf(address) external view returns(uint256)"
@@ -64,18 +73,20 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   try {
     // Fetch all High Liquidity tokens
     highLiqTokens = await autoCompounderFactory.highLiquidityTokens();
-    // Fetch all relays from factory
+    // Fetch all Relays as Contracts from factory
     relays = (await autoCompounderFactory.relays()).map((r: string) => new Contract(r, compAbi, provider));
 
+    // Get all High Liquidity Tokens and their balances locked in the Relay
     relays.forEach(async (relay) => {
       let tokenBalances = await Promise.all(highLiqTokens.map((addr: string) => new Contract(addr, TOKEN_ABI, provider).balanceOf(relay.address)));
       let relayTokens: RelayToken[] = [];
       highLiqTokens.forEach((addr, i) => relayTokens.push({address: addr, amount: tokenBalances[i]} as RelayToken));
-      relayTokens.filter((token) => token.amount != 0);
+      relayTokens.filter((token) => token.amount != 0); // Filter out tokens without amounts
 
       relayInfos.push({contract: relay, tokens: relayTokens} as RelayInfo)
     });
 
+    // TODO: Logging for debugging purposes
     console.log(`AutoCompounderFactory is in address ${autoCompounderFactory.address}`);
     console.log(`All relays ${relays}`);
     console.log(`All High Liq Tokens ${highLiqTokens}`);
