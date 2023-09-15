@@ -103,10 +103,24 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
 
+  const slippage = 500; // TODO: choose slippage
+  let txData: TxData[] = [];
+
+  // Encode all calls for the multicall
+  relayInfos.forEach((relayInfo: RelayInfo) => {
+      let relay = relayInfo.contract;
+      let abi = relay.interface;
+      // Swap all Relay Tokens to VELO
+      let calls: string[] = relayInfo.tokens.map((info) => abi.encodeFunctionData("swapTokenToVELO", [info.address, slippage]));
+      // Compound rewards
+      calls.push(abi.encodeFunctionData("rewardAndCompound"));
+      let callData: string = abiCoder.encode(["bytes[]"], calls);
+      txData.push({to: relay.address, data: abi.encodeFunctionData("multicall", [callData])} as TxData);
+  });
 
   // Return execution call data
   return {
     canExec: true,
-    callData: [],
+    callData: txData,
   };
 });
