@@ -41,51 +41,53 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     "function balanceOf(address) external view returns(uint256)",
   ];
 
-  // Retrieve all Relay Factories
+  let relays: Contract[];
+  let relayInfos: RelayInfo[] = [];
+
+  let highLiqTokens: string[];
   let relayFactories: Contract[];
   let relayFactoryRegistry: Contract;
+  let autoCompounderFactory: Contract;
+
   try {
     const registryAddr: string =
       (userArgs.registry as string) ??
       "0x925189766f98B766E64A67E9e70d435CD7F6F819";
+
     relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider);
     console.log(
       `RelayFactoryRegistry is in address ${relayFactoryRegistry.address}`
     );
 
+    // Retrieve all Relay Factories
     relayFactories = (await relayFactoryRegistry.getAll()).map(
       (f: string) => new Contract(f, factoryAbi, provider)
     );
     console.log(`All relayFactories ${relayFactories.map((e) => e.address)}`);
-  } catch (err) {
-    return { canExec: false, message: `Rpc call failed ${err}` };
-  }
 
-  // Retrieve all High Liquidity Tokens and their balances
-  let relays: Contract[];
-  let highLiqTokens: string[];
-  let relayInfos: RelayInfo[] = [];
-  // TODO: only using autoCompounderFactory for now
-  let autoCompounderFactory: Contract = new Contract(
-    relayFactories[0].address,
-    compFactoryAbi,
-    provider
-  );
-  try {
-    // Fetch all High Liquidity tokens
+    // TODO: only using autoCompounderFactory for now
+    autoCompounderFactory = new Contract(
+      relayFactories[0].address,
+      compFactoryAbi,
+      provider
+    );
+
+    // Fetch all High Liquidity Tokens
     highLiqTokens = await autoCompounderFactory.highLiquidityTokens();
     // Fetch all Relays as Contracts from factory
     relays = (await autoCompounderFactory.relays()).map(
       (r: string) => new Contract(r, compAbi, provider)
     );
 
-    // Get all High Liquidity Tokens and their balances locked in the Relay
+    // Get all token balances
     relays.forEach(async (relay) => {
-      let tokenBalances = await Promise.all(
+      let tokenBalances = await Promise.all( // Fetch all token balances
         highLiqTokens.map((addr: string) =>
           new Contract(addr, TOKEN_ABI, provider).balanceOf(relay.address)
         )
       );
+
+      // Pair balances with tokens as a RelayToken instance
       let relayTokens: RelayToken[] = [];
       highLiqTokens.forEach((addr, i) =>
         relayTokens.push({
@@ -95,33 +97,34 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
       );
       relayTokens.filter((token) => token.amount != 0); // Filter out tokens without amounts
 
+      // Store info regarding all tokens of a Relay
       relayInfos.push({ contract: relay, tokens: relayTokens } as RelayInfo);
-    });
-
-    // TODO: Logging for debugging purposes
-    console.log(
-      `AutoCompounderFactory is in address ${autoCompounderFactory.address}`
-    );
-    console.log(`All relays ${relays}`);
-    console.log(`All High Liq Tokens ${highLiqTokens}`);
-    relayInfos.forEach((relayInfo) => {
-      let contract = relayInfo.contract;
-      console.log("==================================");
-      console.log(`Relay Address: ${contract.address}`);
-      relayInfo.tokens.forEach((relayToken) => {
-        console.log(
-          `Address: ${relayToken.address}, Amount: ${relayToken.amount}`
-        );
-      });
     });
   } catch (err) {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
 
+  // TODO: Logging for debugging purposes
+  console.log(
+    `AutoCompounderFactory is in address ${autoCompounderFactory.address}`
+  );
+  console.log(`All relays ${relays}`);
+  console.log(`All High Liq Tokens ${highLiqTokens}`);
+  relayInfos.forEach((relayInfo) => {
+    let contract = relayInfo.contract;
+    console.log("==================================");
+    console.log(`Relay Address: ${contract.address}`);
+    relayInfo.tokens.forEach((relayToken) => {
+      console.log(
+        `Address: ${relayToken.address}, Amount: ${relayToken.amount}`
+      );
+    });
+  });
+
   const slippage = 500; // TODO: choose slippage
   let txData: TxData[] = [];
 
-  // Encode all calls for the multicall
+  // Encode multicall for each Relay
   relayInfos.forEach((relayInfo: RelayInfo) => {
     let relay = relayInfo.contract;
     let abi = relay.interface;
@@ -131,6 +134,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     );
     // Compound rewards
     calls.push(abi.encodeFunctionData("rewardAndCompound"));
+    // Encode calls in multicall
     let callData: string = abiCoder.encode(["bytes[]"], calls);
     txData.push({
       to: relay.address,
@@ -141,6 +145,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   // Return execution call data
   return {
     canExec: true,
-    callData: txData,
+    // callData: txData,
+    callData: [],
   };
 });
