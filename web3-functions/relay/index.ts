@@ -10,20 +10,12 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { AbiCoder } from "@ethersproject/abi";
 
-// Relay Token Information
-interface RelayToken {
-  // Address of the Token
-  address: string;
-  // Amount of tokens the Relay has in custody
-  amount: number;
-}
-
-// Relay Information
+// Tokens to be Converted per Relay
 interface RelayInfo {
   // Relay Contract
   contract: Contract;
-  // All High Liquidity Tokens of the Relay
-  tokens: RelayToken[];
+  // All tokens to compound
+  tokens: string[];
 }
 
 interface TxData {
@@ -31,7 +23,11 @@ interface TxData {
   data: string;
 }
 
-async function getFactoriesFromRegistry(registryAddr: string, provider: Provider) {
+const TOKEN_ABI = [
+"function balanceOf(address) external view returns(uint256)",
+];
+
+async function getFactoriesFromRegistry(registryAddr: string, provider: Provider): Promise<Contract[]> {
     let relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider);
     console.log(
       `RelayFactoryRegistry is in address ${relayFactoryRegistry.address}`
@@ -43,6 +39,53 @@ async function getFactoriesFromRegistry(registryAddr: string, provider: Provider
     );
 }
 
+async function getCompounderRelayInfos(autoCompounderAddr: string, provider: Provider): Promise<RelayInfo[]> {
+  let autoCompounderFactory = new Contract(
+    autoCompounderAddr,
+    compFactoryAbi,
+    provider
+  );
+  console.log(
+    `AutoCompounderFactory is in address ${autoCompounderFactory.address}`
+  );
+
+  let relayInfos: RelayInfo[] = [];
+  // Fetch all Relays as Contracts from factory
+  let relays: Contract[] = (await autoCompounderFactory.relays()).map(
+    (r: string) => new Contract(r, compAbi, provider)
+  );
+  // Fetch all High Liquidity Tokens
+  let highLiqTokens: string[] = await autoCompounderFactory.highLiquidityTokens();
+  console.log(`All High Liq Tokens ${highLiqTokens}`);
+
+  relays.forEach(async (relay: Contract) => {
+    console.log("==================================");
+    console.log(`Relay Address: ${relay.address}`);
+    // Get Relay Balance of all high liquidity tokens
+    let relayTokens: string[] = await getTokensToCompound(relay.address, highLiqTokens, provider);
+    // Store info regarding all tokens of a Relay
+    relayInfos.push({ contract: relay, tokens: relayTokens } as RelayInfo);
+  });
+  return relayInfos;
+}
+
+async function getTokensToCompound(relayAddr: string, highLiqTokens: string[], provider: Provider): Promise<string[]> {
+  // Get all token balances
+  let tokenBalances = await Promise.all(
+    highLiqTokens.map((addr: string) =>
+      new Contract(addr, TOKEN_ABI, provider).balanceOf(relayAddr)
+    )
+  );
+
+  highLiqTokens.forEach((relayToken, i) => {
+    console.log(
+      `Address: ${relayToken}, Amount: ${tokenBalances[i]}`
+    );
+  });
+
+  return highLiqTokens.filter((_, i) => tokenBalances[i] == 0); // Filter out tokens without amounts
+}
+
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { userArgs, multiChainProvider } = context;
 
@@ -50,18 +93,11 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   const abiCoder = new AbiCoder();
 
-  const TOKEN_ABI = [
-    "function balanceOf(address) external view returns(uint256)",
-  ];
-
-  let relays: Contract[];
+  let relayFactories: Contract[];
   let relayInfos: RelayInfo[] = [];
 
-  let highLiqTokens: string[];
-  let relayFactories: Contract[];
-  let autoCompounderFactory: Contract;
-
   try {
+    // Get Registry
     const registryAddr: string =
       (userArgs.registry as string) ??
       "0x925189766f98B766E64A67E9e70d435CD7F6F819";
@@ -70,61 +106,15 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     relayFactories = await getFactoriesFromRegistry(registryAddr, provider);
     console.log(`All relayFactories ${relayFactories.map((e) => e.address)}`);
 
-    // TODO: only using autoCompounderFactory for now
-    autoCompounderFactory = new Contract(
-      relayFactories[0].address,
-      compFactoryAbi,
-      provider
-    );
-
-    // Fetch all High Liquidity Tokens
-    highLiqTokens = await autoCompounderFactory.highLiquidityTokens();
-    // Fetch all Relays as Contracts from factory
-    relays = (await autoCompounderFactory.relays()).map(
-      (r: string) => new Contract(r, compAbi, provider)
-    );
-
-    // Get all token balances
-    relays.forEach(async (relay) => {
-      let tokenBalances = await Promise.all( // Fetch all token balances
-        highLiqTokens.map((addr: string) =>
-          new Contract(addr, TOKEN_ABI, provider).balanceOf(relay.address)
-        )
-      );
-
-      // Pair balances with tokens as a RelayToken instance
-      let relayTokens: RelayToken[] = [];
-      highLiqTokens.forEach((addr, i) =>
-        relayTokens.push({
-          address: addr,
-          amount: tokenBalances[i],
-        } as RelayToken)
-      );
-      relayTokens.filter((token) => token.amount != 0); // Filter out tokens without amounts
-
-      // Store info regarding all tokens of a Relay
-      relayInfos.push({ contract: relay, tokens: relayTokens } as RelayInfo);
-    });
+    // TODO: Only handling CompounderFactory
+    // Fetch Tokens to Compound per AutoCompounder
+    relayInfos = await getCompounderRelayInfos(relayFactories[0].address, provider);
   } catch (err) {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
 
   // TODO: Logging for debugging purposes
-  console.log(
-    `AutoCompounderFactory is in address ${autoCompounderFactory.address}`
-  );
-  console.log(`All relays ${relays}`);
-  console.log(`All High Liq Tokens ${highLiqTokens}`);
-  relayInfos.forEach((relayInfo) => {
-    let contract = relayInfo.contract;
-    console.log("==================================");
-    console.log(`Relay Address: ${contract.address}`);
-    relayInfo.tokens.forEach((relayToken) => {
-      console.log(
-        `Address: ${relayToken.address}, Amount: ${relayToken.amount}`
-      );
-    });
-  });
+  console.log(`All relays ${relayInfos.map((info) => info.contract.address)}`);
 
   const slippage = 500; // TODO: choose slippage
   let txData: TxData[] = [];
@@ -134,8 +124,8 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     let relay = relayInfo.contract;
     let abi = relay.interface;
     // Swap all Relay Tokens to VELO
-    let calls: string[] = relayInfo.tokens.map((info) =>
-      abi.encodeFunctionData("swapTokenToVELO", [info.address, slippage])
+    let calls: string[] = relayInfo.tokens.map((token) =>
+      abi.encodeFunctionData("swapTokenToVELO", [token, slippage])
     );
     // Compound rewards
     calls.push(abi.encodeFunctionData("rewardAndCompound"));
