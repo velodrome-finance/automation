@@ -86,6 +86,30 @@ async function getTokensToCompound(relayAddr: string, highLiqTokens: string[], p
   return highLiqTokens.filter((_, i) => tokenBalances[i] == 0); // Filter out tokens without amounts
 }
 
+function getCompounderTxData(relayInfos: RelayInfo[], abiCoder: AbiCoder): TxData[] {
+  let txData: TxData[] = [];
+  const slippage = 500; // TODO: choose slippage
+  // Encode multicall for each Relay
+  relayInfos.forEach((relayInfo: RelayInfo) => {
+    let relay = relayInfo.contract;
+    let abi = relay.interface;
+    //TODO: also encode claimBribes and claimFees
+    // Swap all Relay Tokens to VELO
+    let calls: string[] = relayInfo.tokens.map((token) =>
+      abi.encodeFunctionData("swapTokenToVELO", [token, slippage])
+    );
+    // Compound rewards
+    calls.push(abi.encodeFunctionData("rewardAndCompound"));
+    // Encode calls in multicall
+    let callData: string = abiCoder.encode(["bytes[]"], calls);
+    txData.push({
+      to: relay.address,
+      data: abi.encodeFunctionData("multicall", [callData]),
+    } as TxData);
+  });
+  return txData;
+}
+
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { userArgs, multiChainProvider } = context;
 
@@ -116,31 +140,13 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   // TODO: Logging for debugging purposes
   console.log(`All relays ${relayInfos.map((info) => info.contract.address)}`);
 
-  const slippage = 500; // TODO: choose slippage
-  let txData: TxData[] = [];
-
-  // Encode multicall for each Relay
-  relayInfos.forEach((relayInfo: RelayInfo) => {
-    let relay = relayInfo.contract;
-    let abi = relay.interface;
-    // Swap all Relay Tokens to VELO
-    let calls: string[] = relayInfo.tokens.map((token) =>
-      abi.encodeFunctionData("swapTokenToVELO", [token, slippage])
-    );
-    // Compound rewards
-    calls.push(abi.encodeFunctionData("rewardAndCompound"));
-    // Encode calls in multicall
-    let callData: string = abiCoder.encode(["bytes[]"], calls);
-    txData.push({
-      to: relay.address,
-      data: abi.encodeFunctionData("multicall", [callData]),
-    } as TxData);
-  });
+  // Encode all needed calls based on tokens to compound
+  let txData: TxData[] = getCompounderTxData(relayInfos, abiCoder);
 
   // Return execution call data
   return {
     canExec: true,
     // callData: txData,
-    callData: [],
+    callData: txData,
   };
 });
