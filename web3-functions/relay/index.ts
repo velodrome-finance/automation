@@ -7,6 +7,7 @@ import { abi as compAbi } from "../../artifacts/src/autoCompounder/AutoCompounde
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
 import { Contract } from "@ethersproject/contracts";
+import { Provider } from "@ethersproject/providers";
 import { AbiCoder } from "@ethersproject/abi";
 
 // Relay Token Information
@@ -30,6 +31,18 @@ interface TxData {
   data: string;
 }
 
+async function getFactoriesFromRegistry(registryAddr: string, provider: Provider) {
+    let relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider);
+    console.log(
+      `RelayFactoryRegistry is in address ${relayFactoryRegistry.address}`
+    );
+
+    // Retrieve all Relay Factories
+    return (await relayFactoryRegistry.getAll()).map(
+      (f: string) => new Contract(f, factoryAbi, provider)
+    );
+}
+
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { userArgs, multiChainProvider } = context;
 
@@ -46,7 +59,6 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   let highLiqTokens: string[];
   let relayFactories: Contract[];
-  let relayFactoryRegistry: Contract;
   let autoCompounderFactory: Contract;
 
   try {
@@ -54,15 +66,8 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
       (userArgs.registry as string) ??
       "0x925189766f98B766E64A67E9e70d435CD7F6F819";
 
-    relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider);
-    console.log(
-      `RelayFactoryRegistry is in address ${relayFactoryRegistry.address}`
-    );
-
     // Retrieve all Relay Factories
-    relayFactories = (await relayFactoryRegistry.getAll()).map(
-      (f: string) => new Contract(f, factoryAbi, provider)
-    );
+    relayFactories = await getFactoriesFromRegistry(registryAddr, provider);
     console.log(`All relayFactories ${relayFactories.map((e) => e.address)}`);
 
     // TODO: only using autoCompounderFactory for now
