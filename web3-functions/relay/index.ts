@@ -3,18 +3,14 @@ import {
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
 //TODO: move constants to constants.ts
-import { abi as compFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
-import { abi as compAbi } from "../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
+import { getCompounderRelayInfos, getCompounderTxData, RelayInfo, TxData } from "./hooks/autocompounder";
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
-import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 import { abi as erc20Abi } from "./abis/erc20.json";
 
-import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-import { getCompounderRelayInfos, getCompounderTxData, RelayInfo, TxData } from "./hooks/autocompounder";
 
 import { useContractRead } from "wagmi";
 // import { useQuote } from "../hooks/quote";
