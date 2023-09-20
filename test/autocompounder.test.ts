@@ -38,21 +38,6 @@ import { BigNumber } from "ethers";
 import { DAY } from "../web3-functions/constants";
 const { ethers, deployments, w3f } = hre;
 
-async function setBalanceOf(
-  userAddr: string,
-  erc20address: string,
-  slot: number,
-  balance: number
-) {
-  // Storage slot index
-  const storageIndex = ethers.utils.solidityKeccak256(
-    ["uint256", "uint256"],
-    [userAddr, slot] // key, slot
-  );
-  // Set balance
-  await setStorageAt(erc20address, storageIndex.toString(), balance);
-}
-
 interface BalanceSlot {
   address: string;
   slot: number;
@@ -85,6 +70,21 @@ const storageSlots: StorageList = {
     slot: 0,
   },
 };
+
+async function setBalanceOf(
+  userAddr: string,
+  erc20address: string,
+  slot: number,
+  balance: number
+) {
+  // Storage slot index
+  const storageIndex = ethers.utils.solidityKeccak256(
+    ["uint256", "uint256"],
+    [userAddr, slot] // key, slot
+  );
+  // Set balance
+  await setStorageAt(erc20address, storageIndex.toString(), balance);
+}
 
 async function seedRelayWithBalances(
   relayAddr: string,
@@ -157,48 +157,14 @@ describe("AutoCompounder Automation Tests", function () {
     weth = await ethers.getContractAt(erc20Abi, storageSlots["weth"].address);
     velo = await ethers.getContractAt(erc20Abi, storageSlots["velo"].address);
 
-    // Mint VELO to test user
-    let { address: tokenAddr, slot } = storageSlots["velo"];
-    await setBalanceOf(owner.address, tokenAddr, slot, 100_000e18); //TODO: this bal could be smaller
-
-    // console.log(`Comp Factory Address: ${autoCompounderFactory.address}`);
-
-    //       const optimizer = await deploy<CompoundOptimizer>( "CompoundOptimizer",
-    //         undefined,
-    //         jsonConstants.USDC,
-    //         jsonConstants.WETH,
-    //         jsonConstants.OP,
-    //         jsonConstants.v2.VELO,
-    //         jsonConstants.v2.PoolFactory,
-    //         jsonConstants.v2.Router
-    //       );
-    //       console.log(`Optimizer Address: ${optimizer.address}`);
-
-    //       const autoCompounderFactory = await deploy<AutoCompounderFactory>(
-    //         "AutoCompounderFactory",
-    //         undefined,
-    //         jsonConstants.v2.Forwarder,
-    //         jsonConstants.v2.Voter,
-    //         jsonConstants.v2.Router,
-    //         optimizer.address,
-    //         keeperRegistry.address,
-    //         jsonConstants.highLiquidityTokens
-    //       );
-    //       console.log(`AutoCompounderFactory deployed to ${autoCompounderFactory.address}`);
-
-    ////TODO: Testing purposes VVVV
-    //let factoryOwner = await relayFactoryRegistry.owner();
-    //await impersonateAccount(factoryOwner);
-    //await setBalance(factoryOwner, 100e18);
-    //let factorySigner = await ethers.getSigner(factoryOwner);
-    //let testTx = await relayFactoryRegistry.populateTransaction.approve(autoCompounderFactory.address);
-    //await factorySigner.sendTransaction({...testTx, from: factoryOwner})
-    ////TODO: Testing purposes ^^^^^
-
     escrow = await ethers.getContractAt(
       "IVotingEscrow",
       jsonOutput.VotingEscrow
     );
+
+    // Mint VELO to test user
+    let { address: tokenAddr, slot } = storageSlots["velo"];
+    await setBalanceOf(owner.address, tokenAddr, slot, 100_000e18); //TODO: this bal could be smaller
 
     // Impersonating manager
     let allowedManager: string = await escrow.allowedManager();
@@ -262,7 +228,7 @@ describe("AutoCompounder Automation Tests", function () {
       registry: relayFactoryRegistry.address,
     };
   });
-  it("Test Automator Flow", async () => {
+  it("Test Compounder Automator Flow", async () => {
     let factories = await relayFactoryRegistry.getAll();
     let tokensToCompound = [usdc, dai, weth, velo];
 
@@ -275,16 +241,15 @@ describe("AutoCompounder Automation Tests", function () {
     }
     let oldBal = await escrow.balanceOfNFT(mTokenId);
     expect(oldBal).to.equal(BigNumber.from(10).pow(18));
-    // console.log(factories);
+
     let { result } = await relayW3f.run();
     result = result as Web3FunctionResultV2;
 
-    // TODO: Send all transactions
-    const callData = result.callData[0];
-    await owner.sendTransaction({ to: callData.to, data: callData.data });
+    for(let call of result.callData) {
+        await owner.sendTransaction({ to: call.to, data: call.data });
+    }
 
     expect(result.canExec).to.equal(true);
-    console.log(await autoCompounder.name());
     // All balances were Swapped to VELO and compounded correctly
     for (const token of tokensToCompound) {
       expect(await token.balanceOf(autoCompounder.address)).to.equal(0);
