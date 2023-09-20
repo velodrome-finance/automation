@@ -8,7 +8,7 @@ import { abi as compAbi } from "../../artifacts/src/autoCompounder/AutoCompounde
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
-import { abi as erc20Abi } from "../abis/erc20.json";
+import { abi as erc20Abi } from "./abis/erc20.json";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";

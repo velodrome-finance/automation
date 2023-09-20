@@ -29,7 +29,7 @@ import {
 import { IVotingEscrow } from "../typechain/lib/contracts/contracts/interfaces/IVotingEscrow";
 import { ERC20 } from "../typechain/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20";
 import { IVoter } from "../typechain/lib/contracts/contracts/interfaces/IVoter";
-import { abi as erc20Abi } from "../web3-functions/abis/erc20.json";
+import { abi as erc20Abi } from "../web3-functions/relay/abis/erc20.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { AbiCoder } from "@ethersproject/abi";
