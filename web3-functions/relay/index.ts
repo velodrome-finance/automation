@@ -7,14 +7,14 @@ import { abi as compFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCo
 import { abi as compAbi } from "../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
-import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json"
-import { abi as erc20Abi } from "../abis/erc20.json"
+import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
+import { abi as erc20Abi } from "../abis/erc20.json";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-import { useContractRead } from 'wagmi';
+import { useContractRead } from "wagmi";
 // import { useQuote } from "../hooks/quote";
 // import {WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI} from "../constants";
 
@@ -28,8 +28,8 @@ interface RelayInfo {
 
 // Token address paired with its Balance
 interface RelayToken {
-    address: string;
-    balance: BigNumber;
+  address: string;
+  balance: BigNumber;
 }
 
 interface TxData {
@@ -38,28 +38,41 @@ interface TxData {
 }
 
 interface Route {
-    from: string;
-    to: string;
-    stable: boolean;
-    factory: string;
+  from: string;
+  to: string;
+  stable: boolean;
+  factory: string;
 }
 
 // Retrieve all Relay Factories from the Registry
-async function getFactoriesFromRegistry(registryAddr: string, provider: Provider): Promise<Contract[]> {
-    let contract = new Contract("0x7F5c764cBc14f9669B88837ca1490cCa17c31607", erc20Abi, provider);
-    let balance = await contract.balanceOf("0xdc166445c575C7d8196274c3C62300BED0da9423");
-    console.log(`Balance = ${balance}`);
-    let relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider); console.log(
-      `RelayFactoryRegistry is in address ${relayFactoryRegistry.address}`
-    );
+async function getFactoriesFromRegistry(
+  registryAddr: string,
+  provider: Provider
+): Promise<Contract[]> {
+  let contract = new Contract(
+    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    erc20Abi,
+    provider
+  );
+  let balance = await contract.balanceOf(
+    "0xdc166445c575C7d8196274c3C62300BED0da9423"
+  );
+  console.log(`Balance = ${balance}`);
+  let relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider);
+  console.log(
+    `RelayFactoryRegistry is in address ${relayFactoryRegistry.address}`
+  );
 
-    return (await relayFactoryRegistry.getAll()).map(
-      (f: string) => new Contract(f, factoryAbi, provider)
-    );
+  return (await relayFactoryRegistry.getAll()).map(
+    (f: string) => new Contract(f, factoryAbi, provider)
+  );
 }
 
 // Get all AutoCompounders paired with their Tokens to compound
-async function getCompounderRelayInfos(autoCompounderAddr: string, provider: Provider): Promise<RelayInfo[]> {
+async function getCompounderRelayInfos(
+  autoCompounderAddr: string,
+  provider: Provider
+): Promise<RelayInfo[]> {
   let autoCompounderFactory = new Contract(
     autoCompounderAddr,
     compFactoryAbi,
@@ -75,19 +88,26 @@ async function getCompounderRelayInfos(autoCompounderAddr: string, provider: Pro
     (r: string) => new Contract(r, compAbi, provider)
   );
   // Fetch all High Liquidity Tokens
-  let highLiqTokens: string[] = await autoCompounderFactory.highLiquidityTokens();
+  let highLiqTokens: string[] =
+    await autoCompounderFactory.highLiquidityTokens();
 
   // Retrieve tokens to be compounded for each Relay
-  let tokenPromises: Promise<RelayToken[]>[] = relays.map(async (relay) => getTokensToCompound(relay.address, highLiqTokens, provider));
+  let tokenPromises: Promise<RelayToken[]>[] = relays.map(async (relay) =>
+    getTokensToCompound(relay.address, highLiqTokens, provider)
+  );
   let relayTokens = await Promise.all(tokenPromises);
   relays.forEach((relay, index) => {
-      relayInfos.push({contract: relay, tokens: relayTokens[index]});
+    relayInfos.push({ contract: relay, tokens: relayTokens[index] });
   });
   return relayInfos;
 }
 
 // From a list of Token addresses, filters out Tokens with no balance
-async function getTokensToCompound(relayAddr: string, highLiqTokens: string[], provider: Provider): Promise<RelayToken[]> {
+async function getTokensToCompound(
+  relayAddr: string,
+  highLiqTokens: string[],
+  provider: Provider
+): Promise<RelayToken[]> {
   // Get all token balances
   let tokenBalances: BigNumber[] = await Promise.all(
     highLiqTokens.map((addr: string) =>
@@ -97,14 +117,15 @@ async function getTokensToCompound(relayAddr: string, highLiqTokens: string[], p
 
   // Pair balances with tokens and filter out zero balances
   let relayTokens: RelayToken[] = highLiqTokens
-                                  .map((token: string, i: number) => ({address: token, balance: tokenBalances[i]} as RelayToken))
-                                  .filter((token: RelayToken) => !token.balance.isZero());
+    .map(
+      (token: string, i: number) =>
+        ({ address: token, balance: tokenBalances[i] } as RelayToken)
+    )
+    .filter((token: RelayToken) => !token.balance.isZero());
 
   relayTokens.forEach((token) => {
-    console.log(
-      `Address: ${token.address}, Amount: ${token.balance}`
-    );
-  })
+    console.log(`Address: ${token.address}, Amount: ${token.balance}`);
+  });
 
   return relayTokens;
 }
@@ -119,25 +140,29 @@ function getCompounderTxData(relayInfos: RelayInfo[]): TxData[] {
     //TODO: also encode claimBribes and claimFees
 
     // TODO: Finish useQuote
-  // const { data: pools, error: poolsError } = useContractRead({
-  //   address: LP_SUGAR_ADDRESS,
-  //   abi: LP_SUGAR_ABI,
-  //   functionName: "forSwaps",
-  //   args: [600, 0],
-  //   cacheTime: 5_000,
-  // });
+    // const { data: pools, error: poolsError } = useContractRead({
+    //   address: LP_SUGAR_ADDRESS,
+    //   abi: LP_SUGAR_ABI,
+    //   functionName: "forSwaps",
+    //   args: [600, 0],
+    //   cacheTime: 5_000,
+    // });
 
-  // const {
-  //   data: newQuote,
-  //   error: quoteError,
-  //   refetch: reQuote,
-  // } = useQuote(pools, relayInfo.tokens[0].address, jsonConstants.v2.VELO, amount, {
-  //   enabled: pools.length > 0 && amount != 0,
-  // });
+    // const {
+    //   data: newQuote,
+    //   error: quoteError,
+    //   refetch: reQuote,
+    // } = useQuote(pools, relayInfo.tokens[0].address, jsonConstants.v2.VELO, amount, {
+    //   enabled: pools.length > 0 && amount != 0,
+    // });
 
     // Swap all Relay Tokens to VELO
     let calls: string[] = relayInfo.tokens.map((token) =>
-      abi.encodeFunctionData("swapTokenToVELOKeeper", [[getRoute(token.address, jsonConstants.v2.VELO)], token.balance, 1])
+      abi.encodeFunctionData("swapTokenToVELOKeeper", [
+        [getRoute(token.address, jsonConstants.v2.VELO)],
+        token.balance,
+        1,
+      ])
     );
     calls.pop(); //TODO: removing frax there is no routing for it yet
     calls.push(abi.encodeFunctionData("compound"));
@@ -151,12 +176,11 @@ function getCompounderTxData(relayInfos: RelayInfo[]): TxData[] {
 
 function getRoute(tokenFrom: string, tokenTo: string) {
   return {
-      from: tokenFrom,
-      to: tokenTo,
-      stable: false,
-      factory: jsonConstants.v2.PoolFactory
-  } as Route
-
+    from: tokenFrom,
+    to: tokenTo,
+    stable: false,
+    factory: jsonConstants.v2.PoolFactory,
+  } as Route;
 }
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
@@ -167,8 +191,8 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let relayInfos: RelayInfo[] = [];
 
   //TODO: move to constants
-  const DAY = 24*60*60;
-  const WEEK = 7*DAY;
+  const DAY = 24 * 60 * 60;
+  const WEEK = 7 * DAY;
 
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
@@ -191,7 +215,10 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
     // TODO: Only handling CompounderFactory
     // Fetch Tokens to Compound per AutoCompounder
-    relayInfos = await getCompounderRelayInfos(relayFactories[0].address, provider);
+    relayInfos = await getCompounderRelayInfos(
+      relayFactories[0].address,
+      provider
+    );
   } catch (err) {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
