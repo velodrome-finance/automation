@@ -3,8 +3,18 @@ import {
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
 //TODO: move constants to constants.ts
-import { getCompounderRelayInfos, getCompounderTxData, RelayInfo, TxData } from "./hooks/autocompounder";
-import { getConverterRelayInfos, getConverterTxData, RelayInfo, TxData } from "./hooks/autoconverter";
+import {
+  getCompounderRelayInfos,
+  getCompounderTxData,
+  RelayInfo,
+  TxData,
+} from "./hooks/autocompounder";
+import {
+  getConverterRelayInfos,
+  getConverterTxData,
+  RelayInfo,
+  TxData,
+} from "./hooks/autoconverter";
 import { abi as compounderFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as converterFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
@@ -33,30 +43,41 @@ async function getFactoriesFromRegistry(
 }
 
 // Fetch Relay Infos for all Relays in all Factories
-async function getRelayInfos(registryAddr: string, provider: Provider): Promise<RelayInfo[][]> {
-    let relayFactories = await getFactoriesFromRegistry(registryAddr, provider);
-    let compounderInfos: RelayInfo[] = [];
-    let converterInfos: RelayInfo[] = [];
+async function getRelayInfos(
+  registryAddr: string,
+  provider: Provider
+): Promise<RelayInfo[][]> {
+  let relayFactories = await getFactoriesFromRegistry(registryAddr, provider);
+  let compounderInfos: RelayInfo[] = [];
+  let converterInfos: RelayInfo[] = [];
 
-    for(let factory of relayFactories) {
-        let relayAddresses = await factory.relays();
+  for (let factory of relayFactories) {
+    let relayAddresses = await factory.relays();
 
-        if(relayAddresses.length != 0) {
-            let token = await (new Contract(relayAddresses[0], relayAbi, provider)).token();
+    if (relayAddresses.length != 0) {
+      let token = await new Contract(
+        relayAddresses[0],
+        relayAbi,
+        provider
+      ).token();
 
-            if(token == jsonConstants.v2.VELO){
-                // Fetch all High Liquidity Tokens for AutoCompounder
-                factory = new Contract(factory.address, compounderFactoryAbi, provider);
-                let tokensToSwap: string[] = await factory.highLiquidityTokens();
-                compounderInfos = compounderInfos.concat(await getCompounderRelayInfos(relayAddresses, tokensToSwap, provider));
-            } else {
-                //TODO: Fetch tokens to swap
-                factory = new Contract(factory.address, converterFactoryAbi, provider);
-                converterInfos = converterInfos.concat(await getConverterRelayInfos(relayAddresses, [], provider));
-            }
-        }
+      if (token == jsonConstants.v2.VELO) {
+        // Fetch all High Liquidity Tokens for AutoCompounder
+        factory = new Contract(factory.address, compounderFactoryAbi, provider);
+        let tokensToSwap: string[] = await factory.highLiquidityTokens();
+        compounderInfos = compounderInfos.concat(
+          await getCompounderRelayInfos(relayAddresses, tokensToSwap, provider)
+        );
+      } else {
+        //TODO: Fetch tokens to swap
+        factory = new Contract(factory.address, converterFactoryAbi, provider);
+        converterInfos = converterInfos.concat(
+          await getConverterRelayInfos(relayAddresses, [], provider)
+        );
+      }
     }
-    return [compounderInfos, converterInfos];
+  }
+  return [compounderInfos, converterInfos];
 }
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
@@ -86,7 +107,10 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
       "0x925189766f98B766E64A67E9e70d435CD7F6F819";
 
     // Retrieve all Relay Factories
-    [compounderInfos, converterInfos] = await getRelayInfos(registryAddr, provider);
+    [compounderInfos, converterInfos] = await getRelayInfos(
+      registryAddr,
+      provider
+    );
   } catch (err) {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
