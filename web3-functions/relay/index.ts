@@ -3,14 +3,26 @@ import {
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
 //TODO: move constants to constants.ts
-import { abi as compFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
-import { abi as compAbi } from "../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
+import {
+  getCompounderRelayInfos,
+  getCompounderTxData,
+  RelayInfo,
+  TxData,
+} from "./hooks/autocompounder";
+import {
+  getConverterRelayInfos,
+  getConverterTxData,
+  RelayInfo,
+  TxData,
+} from "./hooks/autoconverter";
+import { abi as compounderFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
+import { abi as converterFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
-import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
+import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
+import { abi as relayAbi } from "../../artifacts/src/Relay.sol/Relay.json";
 import { abi as erc20Abi } from "./abis/erc20.json";
 
-import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
@@ -18,183 +30,66 @@ import { useContractRead } from "wagmi";
 import { useQuote } from "./hooks/quote";
 import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../constants";
 
-// Tokens to be Converted per Relay
-interface RelayInfo {
-  // Relay Contract
-  contract: Contract;
-  // All tokens to compound
-  tokens: RelayToken[];
-}
-
-// Token address paired with its Balance
-interface RelayToken {
-  address: string;
-  balance: BigNumber;
-}
-
-interface TxData {
-  to: string;
-  data: string;
-}
-
-interface Route {
-  from: string;
-  to: string;
-  stable: boolean;
-  factory: string;
-}
-
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
   registryAddr: string,
   provider: Provider
 ): Promise<Contract[]> {
-  let contract = new Contract(
-    "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
-    erc20Abi,
-    provider
-  );
-  let balance = await contract.balanceOf(
-    "0xdc166445c575C7d8196274c3C62300BED0da9423"
-  );
-  console.log(`Balance = ${balance}`);
   let relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider);
-  console.log(
-    `RelayFactoryRegistry is in address ${relayFactoryRegistry.address}`
-  );
 
   return (await relayFactoryRegistry.getAll()).map(
     (f: string) => new Contract(f, factoryAbi, provider)
   );
 }
 
-// Get all AutoCompounders paired with their Tokens to compound
-async function getCompounderRelayInfos(
-  autoCompounderAddr: string,
+// Fetch Relay Infos for all Relays in all Factories
+async function getRelayInfos(
+  registryAddr: string,
   provider: Provider
-): Promise<RelayInfo[]> {
-  let autoCompounderFactory = new Contract(
-    autoCompounderAddr,
-    compFactoryAbi,
-    provider
-  );
-  console.log(
-    `AutoCompounderFactory is in address ${autoCompounderFactory.address}`
-  );
+): Promise<RelayInfo[][]> {
+  let relayFactories = await getFactoriesFromRegistry(registryAddr, provider);
+  let compounderInfos: RelayInfo[] = [];
+  let converterInfos: RelayInfo[] = [];
 
-  let relayInfos: RelayInfo[] = [];
-  // Fetch all Relays as Contracts from factory
-  let relays: Contract[] = (await autoCompounderFactory.relays()).map(
-    (r: string) => new Contract(r, compAbi, provider)
-  );
-  // Fetch all High Liquidity Tokens
-  let highLiqTokens: string[] =
-    await autoCompounderFactory.highLiquidityTokens();
+  for (let factory of relayFactories) {
+    let relayAddresses = await factory.relays();
 
-  // Retrieve tokens to be compounded for each Relay
-  let tokenPromises: Promise<RelayToken[]>[] = relays.map(async (relay) =>
-    getTokensToCompound(relay.address, highLiqTokens, provider)
-  );
-  let relayTokens = await Promise.all(tokenPromises);
-  relays.forEach((relay, index) => {
-    relayInfos.push({ contract: relay, tokens: relayTokens[index] });
-  });
-  return relayInfos;
-}
+    if (relayAddresses.length != 0) {
+      let token = await new Contract(
+        relayAddresses[0],
+        relayAbi,
+        provider
+      ).token();
 
-// From a list of Token addresses, filters out Tokens with no balance
-async function getTokensToCompound(
-  relayAddr: string,
-  highLiqTokens: string[],
-  provider: Provider
-): Promise<RelayToken[]> {
-  // Get all token balances
-  let tokenBalances: BigNumber[] = await Promise.all(
-    highLiqTokens.map((addr: string) =>
-      new Contract(addr, erc20Abi, provider).balanceOf(relayAddr)
-    )
-  );
-
-  // Pair balances with tokens and filter out zero balances
-  let relayTokens: RelayToken[] = highLiqTokens
-    .map(
-      (token: string, i: number) =>
-        ({ address: token, balance: tokenBalances[i] } as RelayToken)
-    )
-    .filter((token: RelayToken) => !token.balance.isZero());
-
-  relayTokens.forEach((token) => {
-    console.log(`Address: ${token.address}, Amount: ${token.balance}`);
-  });
-
-  return relayTokens;
-}
-
-// Converts a list of RelayInfos into the calls necessary for the Compounding
-async function getCompounderTxData(
-  relayInfos: RelayInfo[],
-  provider: Provider
-): Promise<TxData[]> {
-  let txData: TxData[] = [];
-  // Encode multicall for each Relay
-
-  let contract = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
-  let pools = await contract.forSwaps(300, 0); //was using 600, 0
-  console.log(`Pools: ${pools}`);
-
-  relayInfos.forEach((relayInfo: RelayInfo) => {
-    console.log(`Relay Address: ${relayInfo.contract.address}`);
-    let relay = relayInfo.contract;
-    let abi = relay.interface;
-    //TODO: also encode claimBribes and claimFees
-
-    // TODO: Finish useQuote
-
-    const {
-      data: newQuote,
-      error: quoteError,
-      refetch: reQuote,
-    } = useQuote(
-      pools,
-      relayInfo.tokens[0].address,
-      jsonConstants.v2.VELO,
-      relayInfo.tokens[0].balance,
-      provider
-    );
-
-    // Swap all Relay Tokens to VELO
-    let calls: string[] = relayInfo.tokens.map((token) =>
-      abi.encodeFunctionData("swapTokenToVELOKeeper", [
-        [getRoute(token.address, jsonConstants.v2.VELO)],
-        token.balance,
-        1,
-      ])
-    );
-    calls.pop(); //TODO: removing frax there is no routing for it yet
-    calls.push(abi.encodeFunctionData("compound"));
-    txData.push({
-      to: relay.address,
-      data: abi.encodeFunctionData("multicall", [calls]),
-    } as TxData);
-  });
-  return txData;
-}
-
-function getRoute(tokenFrom: string, tokenTo: string) {
-  return {
-    from: tokenFrom,
-    to: tokenTo,
-    stable: false,
-    factory: jsonConstants.v2.PoolFactory,
-  } as Route;
+      if (token == jsonConstants.v2.VELO) {
+        // Fetch all High Liquidity Tokens for AutoCompounder
+        factory = new Contract(factory.address, compounderFactoryAbi, provider);
+        let tokensToSwap: string[] = await factory.highLiquidityTokens();
+        compounderInfos = compounderInfos.concat(
+          await getCompounderRelayInfos(relayAddresses, tokensToSwap, provider)
+        );
+      } else {
+        //TODO: Fetch tokens to swap
+        factory = new Contract(factory.address, converterFactoryAbi, provider);
+        converterInfos = converterInfos.concat(
+          await getConverterRelayInfos(relayAddresses, [], provider)
+        );
+      }
+    }
+  }
+  return [compounderInfos, converterInfos];
 }
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { userArgs, multiChainProvider } = context;
   const provider = multiChainProvider.default();
 
-  let relayFactories: Contract[];
-  let relayInfos: RelayInfo[] = [];
+  let compounderInfos: RelayInfo[] = [];
+  let converterInfos: RelayInfo[] = [];
+
+  //TODO: move to constants
+  const DAY = 24 * 60 * 60;
+  const WEEK = 7 * DAY;
 
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
@@ -203,7 +98,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
     //TODO: Also check if function has been run in less then a day
 
-    // First Day Validation
+    // Can only run on First Day of Epoch
     if (firstDayEnd < timestamp)
       return { canExec: false, message: `Not first day` };
 
@@ -214,28 +109,21 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     console.log(`Registry is in address ${registryAddr}`);
 
     // Retrieve all Relay Factories
-    relayFactories = await getFactoriesFromRegistry(registryAddr, provider);
-    console.log(`All relayFactories ${relayFactories.map((e) => e.address)}`);
-
-    // TODO: Only handling CompounderFactory
-    // Fetch Tokens to Compound per AutoCompounder
-    relayInfos = await getCompounderRelayInfos(
-      relayFactories[0].address,
+    [compounderInfos, converterInfos] = await getRelayInfos(
+      registryAddr,
       provider
     );
   } catch (err) {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
 
-  // TODO: Logging for debugging purposes
-  console.log(`All relays ${relayInfos.map((info) => info.contract.address)}`);
-
   // Encode all needed calls based on tokens to compound
-  let txData: TxData[] = await getCompounderTxData(relayInfos, provider);
+  let compounderTxData: TxData[] = await getCompounderTxData(compounderInfos, provider);
+  let converterTxData: TxData[] = await getConverterTxData(converterInfos, provider);
 
   // Return execution call data
   return {
     canExec: true,
-    callData: txData,
+    callData: compounderTxData.concat(converterTxData),
   };
 });
