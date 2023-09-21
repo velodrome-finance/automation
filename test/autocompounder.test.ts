@@ -71,6 +71,43 @@ const storageSlots: StorageList = {
   },
 };
 
+async function createAutoCompounder(autoCompounderFactory: Contract, velo: Contract, escrow: Contract, owner: SignerWithAddress) {
+    // Impersonating manager
+    let allowedManager = await escrow.allowedManager();
+    await setBalance(allowedManager, 100e18);
+    await impersonateAccount(allowedManager);
+    let manager = await ethers.getSigner(allowedManager);
+
+    // Creating Managed Lock
+    let tx = await escrow.populateTransaction.createManagedLockFor(
+      owner.address
+    );
+    await manager.sendTransaction({ ...tx, from: allowedManager });
+    let mTokenId = await escrow.tokenId();
+    await stopImpersonatingAccount(allowedManager);
+
+    // Create Normal veNFT and deposit into managed
+    let amount = BigNumber.from(10).pow(18);
+    await velo.approve(escrow.address, amount.mul(10));
+    await escrow.createLock(amount, 4 * 365 * 24 * 60 * 60);
+    let token: BigNumber = await escrow.tokenId();
+    let voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
+    await voter.depositManaged(token, mTokenId);
+
+    await escrow.approve(autoCompounderFactory.address, mTokenId);
+
+    // Create AutoCompounder
+    const abiCoder = new AbiCoder();
+    await autoCompounderFactory.createRelay(
+      owner.address,
+      mTokenId,
+      "AutoCompounder",
+      abiCoder.encode(["bytes"], [0])
+    );
+
+    return mTokenId;
+}
+
 async function setBalanceOf(
   userAddr: string,
   erc20address: string,
@@ -129,11 +166,11 @@ describe("AutoCompounder Automation Tests", function () {
   let frax: ERC20;
   let weth: ERC20;
   let velo: ERC20;
-  let mTokenId: BigNumber;
+  let relays: string[];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
+  let mTokens: BigNumber[] = [];
   let relayFactoryRegistry: Registry;
-  let autoCompounder: AutoCompounder;
 
   before(async function () {
     await deployments.fixture();
@@ -166,53 +203,25 @@ describe("AutoCompounder Automation Tests", function () {
     let { address: tokenAddr, slot } = storageSlots["velo"];
     await setBalanceOf(owner.address, tokenAddr, slot, 100_000e18); //TODO: this bal could be smaller
 
-    // Impersonating manager
-    let allowedManager: string = await escrow.allowedManager();
+    // Setting owner as Keeper
+    let allowedManager = await keeperRegistry.owner();
     await setBalance(allowedManager, 100e18);
     await impersonateAccount(allowedManager);
     let manager = await ethers.getSigner(allowedManager);
 
-    // Creating Managed Lock
-    let tx = await escrow.populateTransaction.createManagedLockFor(
-      owner.address
-    );
-    await manager.sendTransaction({ ...tx, from: allowedManager });
-    mTokenId = await escrow.tokenId();
-    await stopImpersonatingAccount(allowedManager);
-
-    // Setting owner as Keeper
-    allowedManager = await keeperRegistry.owner();
-    await setBalance(allowedManager, 100e18);
-    await impersonateAccount(allowedManager);
-    manager = await ethers.getSigner(allowedManager);
-
-    tx = await keeperRegistry.populateTransaction.approve(owner.address);
+    let tx = await keeperRegistry.populateTransaction.approve(owner.address);
     await manager.sendTransaction({ ...tx, from: allowedManager });
     await stopImpersonatingAccount(allowedManager);
 
-    // Create Normal veNFT and deposit into managed
-    let amount = BigNumber.from(10).pow(18);
-    await velo.approve(escrow.address, amount);
-    await escrow.createLock(amount, 4 * 365 * 24 * 60 * 60);
-    let token: BigNumber = await escrow.tokenId();
-    let voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
-    await voter.depositManaged(token, mTokenId);
+    // Create multiple AutoCompounders and save their mTokenId's
+    for(let i = 0; i < 4; i++)
+        mTokens.push(await createAutoCompounder(autoCompounderFactory, velo, escrow, owner));
 
-    await escrow.approve(autoCompounderFactory.address, mTokenId);
-
-    // Create AutoCompounder
-    const abiCoder = new AbiCoder();
-    await autoCompounderFactory.createRelay(
-      owner.address,
-      mTokenId,
-      "AutoCompounder",
-      abiCoder.encode(["bytes"], [0])
-    );
-
-    let relays = await autoCompounderFactory.relays();
-    autoCompounder = await ethers.getContractAt("AutoCompounder", relays[0]);
-
-    await seedRelayWithBalances(autoCompounder.address, storageSlots);
+    // Fetch info on all the AutoCompounders and seed them with Tokens
+    relays = await autoCompounderFactory.relays();
+    for(const relay of relays) {
+        await seedRelayWithBalances(relay, storageSlots);
+    }
 
     // Warp to the last timestamp of the First Day
     let day = 24 * 60 * 60;
@@ -232,29 +241,37 @@ describe("AutoCompounder Automation Tests", function () {
     let factories = await relayFactoryRegistry.getAll();
     let tokensToCompound = [usdc, dai, weth, velo];
 
-    // All balances were minted correctly
-    for (const token of tokensToCompound) {
-      expect(await token.balanceOf(autoCompounder.address)).closeTo(
-        BigNumber.from(10).pow(23),
-        BigNumber.from(10).pow(17)
-      );
+    // All balances were minted correctly for all Relays
+    let oldBalances = [];
+    for(const i in relays) {
+        for (const token of tokensToCompound) {
+          expect(await token.balanceOf(relays[i])).closeTo(
+            BigNumber.from(10).pow(23),
+            BigNumber.from(10).pow(17)
+          );
+        }
+        let oldBal = await escrow.balanceOfNFT(mTokens[i]);
+        console.log(`OLDBAL: ${oldBal}`);
+        expect(oldBal).to.equal(BigNumber.from(10).pow(18));
+        oldBalances.push(oldBal);
     }
-    let oldBal = await escrow.balanceOfNFT(mTokenId);
-    expect(oldBal).to.equal(BigNumber.from(10).pow(18));
 
+    // Run script and send its transactions
     let { result } = await relayW3f.run();
     result = result as Web3FunctionResultV2;
+    expect(result.canExec).to.equal(true);
 
     for(let call of result.callData) {
         await owner.sendTransaction({ to: call.to, data: call.data });
     }
 
-    expect(result.canExec).to.equal(true);
-    // All balances were Swapped to VELO and compounded correctly
-    for (const token of tokensToCompound) {
-      expect(await token.balanceOf(autoCompounder.address)).to.equal(0);
+    // All balances were Swapped to VELO and compounded correctly for all Relays
+    for(const i in relays) {
+        for (const token of tokensToCompound) {
+          expect(await token.balanceOf(relays[i])).to.equal(0);
+        }
+        expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
     }
-    expect(await escrow.balanceOfNFT(mTokenId)).to.above(oldBal);
   });
   it("Cannot execute if after first day of script", async () => {
     time.increase(1);
