@@ -4,8 +4,10 @@ import { FixedNumber, utils } from "ethers";
 import Graph from "graphology";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 import { chunk, isEmpty } from "lodash";
+import { Contract } from "@ethersproject/contracts";
+import { Provider } from "@ethersproject/providers";
 
-import { LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS } from "../constants";
+import { LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS } from "../../constants";
 
 /**
  * Returns the division of two big numbers
@@ -178,37 +180,35 @@ function getRoutes(pairs, fromToken, toToken, maxHops = 3) {
  * if the quoted amount is the same. This should theoretically limit
  * the price impact on a trade.
  */
-async function fetchQuote(routes, amount, chunkSize = 50) {
+async function fetchQuote(routes, amount, provider: Provider, chunkSize = 50) {
+  console.log("inside fetchQuote");
   const routeChunks = chunk(routes, chunkSize);
+  let router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
+
   // Split into chunks are get the route quotes...
   const quotePromises = routeChunks.map((routeChunk) => {
-    return readContracts({
-      contracts: routeChunk.map((route) => ({
-        address: ROUTER_ADDRESS,
-        abi: ROUTER_ABI,
-        functionName: "getAmountsOut",
-        args: [amount, route],
-      })),
-    }).then((amountChunks) => {
-      return amountChunks.map((amountsOut, cIndex) => {
-        // Ignore bad quotes...
-        // @ts-ignore
-        if (!amountsOut || amountsOut.length < 1) {
-          return null;
-        }
+    routeChunk
+      .map((route) => router.getAmountsOut(amount, route))
+      .then((amountsChunk) => {
+        return amountsChunk.map((amountsOut, cIndex) => {
+          // Ignore bad quotes...
+          // @ts-ignore
+          if (!amountOut || amountOut.length < 1) {
+            return null;
+          }
 
-        // @ts-ignore
-        const amountOut = amountsOut[amountsOut.length - 1];
+          // @ts-ignore
+          const amountOut = amountsOut[amountsOut.length - 1];
 
-        // Ignore zero quotes...
-        // @ts-ignore
-        if (amountOut.isZero()) {
-          return null;
-        }
+          // Ignore zero quotes...
+          // @ts-ignore
+          if (amountOut.isZero()) {
+            return null;
+          }
 
-        return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
+          return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
+        });
       });
-    });
   });
 
   const quoteChunks = await Promise.all(quotePromises);
@@ -228,30 +228,34 @@ async function fetchQuote(routes, amount, chunkSize = 50) {
   if (!bestQuote) {
     return null;
   }
+  console.log("bestQuote", bestQuote);
+  console.log("finished fetchQuote");
 
-  return { ...bestQuote, priceImpact: await fetchPriceImpact(bestQuote) };
+  return {
+    ...bestQuote,
+    priceImpact: await fetchPriceImpact(bestQuote, provider),
+  };
 }
 
 /**
  * Fetches and calculates the price impact for a quote
  */
-export async function fetchPriceImpact(quote) {
-  const tradeDiffs = await readContracts({
-    contracts: quote.route.map((route, index) => ({
-      address: LIBRARY_ADDRESS,
-      abi: [
-        "function getTradeDiff(uint, address, address, bool, address) view returns (uint a, uint b)",
-      ],
-      functionName: "getTradeDiff",
-      args: [
+export async function fetchPriceImpact(quote, provider: Provider) {
+  let library_abi =
+    "function getTradeDiff(uint, address, address, bool, address) view returns (uint a, uint b)";
+  const library = new Contract(LIBRARY_ADDRESS, library_abi, provider);
+
+  const tradeDiffs = await Promise.all(
+    quote.route.map((route, index) =>
+      library.getTradeDiff(
         quote.amountsOut[index],
         route.from,
         route.to,
         route.stable,
-        route.factory,
-      ],
-    })),
-  });
+        route.factory
+      )
+    )
+  );
 
   let totalRatio = utils.parseUnits("1.0");
 
@@ -271,15 +275,13 @@ export async function fetchPriceImpact(quote) {
 /**
  * Returns the quote for a tokenA -> tokenB
  */
-export function useQuote(pairs, fromToken, toToken, amount, opts = {}) {
-  return useQuery(
-    ["fetchQuote", pairs, fromToken, toToken, amount],
-    () => fetchQuote(getRoutes(pairs, fromToken, toToken), amount),
-    {
-      ...opts,
-      // 1 minute...
-      refetchInterval: 1_000 * 60,
-      keepPreviousData: false,
-    }
-  );
+export function useQuote(
+  pairs,
+  fromToken,
+  toToken,
+  amount,
+  provider: Provider
+) {
+  console.log("inside useQuote");
+  return fetchQuote(getRoutes(pairs, fromToken, toToken), amount, provider);
 }
