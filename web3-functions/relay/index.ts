@@ -15,8 +15,8 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
 import { useContractRead } from "wagmi";
-// import { useQuote } from "../hooks/quote";
-// import {WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI} from "../constants";
+import { useQuote } from "./hooks/quote";
+import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../constants";
 
 // Tokens to be Converted per Relay
 interface RelayInfo {
@@ -131,30 +131,36 @@ async function getTokensToCompound(
 }
 
 // Converts a list of RelayInfos into the calls necessary for the Compounding
-function getCompounderTxData(relayInfos: RelayInfo[]): TxData[] {
+async function getCompounderTxData(
+  relayInfos: RelayInfo[],
+  provider: Provider
+): Promise<TxData[]> {
   let txData: TxData[] = [];
   // Encode multicall for each Relay
+
+  let contract = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
+  let pools = await contract.forSwaps(300, 0); //was using 600, 0
+  console.log(`Pools: ${pools}`);
+
   relayInfos.forEach((relayInfo: RelayInfo) => {
+    console.log(`Relay Address: ${relayInfo.contract.address}`);
     let relay = relayInfo.contract;
     let abi = relay.interface;
     //TODO: also encode claimBribes and claimFees
 
     // TODO: Finish useQuote
-    // const { data: pools, error: poolsError } = useContractRead({
-    //   address: LP_SUGAR_ADDRESS,
-    //   abi: LP_SUGAR_ABI,
-    //   functionName: "forSwaps",
-    //   args: [600, 0],
-    //   cacheTime: 5_000,
-    // });
 
-    // const {
-    //   data: newQuote,
-    //   error: quoteError,
-    //   refetch: reQuote,
-    // } = useQuote(pools, relayInfo.tokens[0].address, jsonConstants.v2.VELO, amount, {
-    //   enabled: pools.length > 0 && amount != 0,
-    // });
+    const {
+      data: newQuote,
+      error: quoteError,
+      refetch: reQuote,
+    } = useQuote(
+      pools,
+      relayInfo.tokens[0].address,
+      jsonConstants.v2.VELO,
+      relayInfo.tokens[0].balance,
+      provider
+    );
 
     // Swap all Relay Tokens to VELO
     let calls: string[] = relayInfo.tokens.map((token) =>
@@ -190,12 +196,9 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let relayFactories: Contract[];
   let relayInfos: RelayInfo[] = [];
 
-  //TODO: move to constants
-  const DAY = 24 * 60 * 60;
-  const WEEK = 7 * DAY;
-
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
+    console.log(`Timestamp is ${timestamp}`);
     let firstDayEnd = timestamp - (timestamp % WEEK) + DAY;
 
     //TODO: Also check if function has been run in less then a day
@@ -208,6 +211,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     const registryAddr: string =
       (userArgs.registry as string) ??
       "0x925189766f98B766E64A67E9e70d435CD7F6F819";
+    console.log(`Registry is in address ${registryAddr}`);
 
     // Retrieve all Relay Factories
     relayFactories = await getFactoriesFromRegistry(registryAddr, provider);
@@ -227,7 +231,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   console.log(`All relays ${relayInfos.map((info) => info.contract.address)}`);
 
   // Encode all needed calls based on tokens to compound
-  let txData: TxData[] = getCompounderTxData(relayInfos);
+  let txData: TxData[] = await getCompounderTxData(relayInfos, provider);
 
   // Return execution call data
   return {
