@@ -56,35 +56,22 @@ export async function getTokensToCompound(
     )
     .filter((token: RelayToken) => !token.balance.isZero());
 
-  relayTokens.forEach((token) => {
-    console.log(`Address: ${token.address}, Amount: ${token.balance}`);
-  });
-
   return relayTokens;
 }
 
 // Get all AutoCompounders paired with their Tokens to compound
 export async function getCompounderRelayInfos(
-  autoCompounderAddr: string,
+  relayAddrs: string[],
+  highLiqTokens: string[],
   provider: Provider
 ): Promise<RelayInfo[]> {
-  let autoCompounderFactory = new Contract(
-    autoCompounderAddr,
-    compFactoryAbi,
-    provider
-  );
-  console.log(
-    `AutoCompounderFactory is in address ${autoCompounderFactory.address}`
-  );
-
   let relayInfos: RelayInfo[] = [];
   // Fetch all Relays as Contracts from factory
-  let relays: Contract[] = (await autoCompounderFactory.relays()).map(
+  let relays: Contract[] = relayAddrs.map(
     (r: string) => new Contract(r, compAbi, provider)
   );
-  // Fetch all High Liquidity Tokens
-  let highLiqTokens: string[] =
-    await autoCompounderFactory.highLiquidityTokens();
+  // let highLiqTokens: string[] =
+  //   await autoCompounderFactory.highLiquidityTokens();
 
   // Retrieve tokens to be compounded for each Relay
   let tokenPromises: Promise<RelayToken[]>[] = relays.map(async (relay) =>
@@ -94,6 +81,10 @@ export async function getCompounderRelayInfos(
   relays.forEach((relay, index) => {
     relayInfos.push({ contract: relay, tokens: relayTokens[index] });
   });
+  // relayInfos.forEach((info) => {
+  //     console.log(`Relay: ${info.contract.address}`);
+  //     info.tokens.forEach((token) => console.log(`Address: ${token.address}, Balance: ${token.balance}`));
+  // })
   return relayInfos;
 }
 
@@ -138,6 +129,7 @@ export function getCompounderTxData(relayInfos: RelayInfo[]): TxData[] {
       data: abi.encodeFunctionData("multicall", [calls]),
     } as TxData);
   });
+  // console.log(txData);
   return txData;
 }
 

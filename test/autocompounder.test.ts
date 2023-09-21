@@ -251,7 +251,6 @@ describe("AutoCompounder Automation Tests", function () {
           );
         }
         let oldBal = await escrow.balanceOfNFT(mTokens[i]);
-        console.log(`OLDBAL: ${oldBal}`);
         expect(oldBal).to.equal(BigNumber.from(10).pow(18));
         oldBalances.push(oldBal);
     }
