@@ -181,7 +181,6 @@ function getRoutes(pairs, fromToken, toToken, maxHops = 3) {
  * the price impact on a trade.
  */
 async function fetchQuote(routes, amount, provider: Provider, chunkSize = 50) {
-  console.log("inside fetchQuote");
   const routeChunks = chunk(routes, chunkSize);
   let router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
 
@@ -228,8 +227,6 @@ async function fetchQuote(routes, amount, provider: Provider, chunkSize = 50) {
   if (!bestQuote) {
     return null;
   }
-  console.log("bestQuote", bestQuote);
-  console.log("finished fetchQuote");
 
   return {
     ...bestQuote,
@@ -282,6 +279,5 @@ export function useQuote(
   amount,
   provider: Provider
 ) {
-  console.log("inside useQuote");
   return fetchQuote(getRoutes(pairs, fromToken, toToken), amount, provider);
 }
