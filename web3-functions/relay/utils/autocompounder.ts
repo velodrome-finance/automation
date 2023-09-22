@@ -8,6 +8,9 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
+import { useQuote } from "./quote";
+import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../../constants";
+
 // TODO: move type declaration
 // Tokens to be Converted per Relay
 export type RelayInfo = {

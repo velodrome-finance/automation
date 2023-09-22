@@ -8,13 +8,13 @@ import {
   getCompounderTxData,
   RelayInfo,
   TxData,
-} from "./hooks/autocompounder";
+} from "./utils/autocompounder";
 import {
   getConverterRelayInfos,
   getConverterTxData,
   RelayInfo,
   TxData,
-} from "./hooks/autoconverter";
+} from "./utils/autoconverter";
 import { abi as compounderFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as converterFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
