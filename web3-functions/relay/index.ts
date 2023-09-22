@@ -27,8 +27,8 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
 import { useContractRead } from "wagmi";
-// import { useQuote } from "../hooks/quote";
-// import {WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI} from "../constants";
+import { useQuote } from "./hooks/quote";
+import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../constants";
 
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
@@ -93,6 +93,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
+    console.log(`Timestamp is ${timestamp}`);
     let firstDayEnd = timestamp - (timestamp % WEEK) + DAY;
 
     //TODO: Also check if function has been run in less then a day
@@ -105,6 +106,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     const registryAddr: string =
       (userArgs.registry as string) ??
       "0x925189766f98B766E64A67E9e70d435CD7F6F819";
+    console.log(`Registry is in address ${registryAddr}`);
 
     // Retrieve all Relay Factories
     [compounderInfos, converterInfos] = await getRelayInfos(
@@ -116,8 +118,8 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   }
 
   // Encode all needed calls based on tokens to compound
-  let compounderTxData: TxData[] = getCompounderTxData(compounderInfos);
-  let converterTxData: TxData[] = await getConverterTxData(converterInfos);
+  let compounderTxData: TxData[] = await getCompounderTxData(compounderInfos, provider);
+  let converterTxData: TxData[] = await getConverterTxData(converterInfos, provider);
 
   // Return execution call data
   return {
