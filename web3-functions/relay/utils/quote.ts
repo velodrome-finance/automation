@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { readContracts } from "@wagmi/core";
-import { FixedNumber, utils } from "ethers";
+import { BigNumber, FixedNumber, utils } from "ethers";
 import Graph from "graphology";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 import { chunk, isEmpty } from "lodash";
@@ -136,8 +136,8 @@ function getRoutes(pairs, fromToken, toToken, maxHops = 3) {
   try {
     paths = allSimpleEdgeGroupPaths(
       graph,
-      fromToken?.wrappedAddress || fromToken.address,
-      toToken?.wrappedAddress || toToken.address,
+      fromToken,
+      toToken,
       { maxDepth: maxHops }
     );
   } catch {
@@ -182,31 +182,32 @@ function getRoutes(pairs, fromToken, toToken, maxHops = 3) {
  */
 async function fetchQuote(routes, amount, provider: Provider, chunkSize = 50) {
   const routeChunks = chunk(routes, chunkSize);
-  let router = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
+  let router: Contract = new Contract(ROUTER_ADDRESS,ROUTER_ABI, provider);
+  amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
 
-  // Split into chunks are get the route quotes...
-  const quotePromises = routeChunks.map((routeChunk) => {
-    routeChunk
-      .map((route) => router.getAmountsOut(amount, route))
-      .then((amountsChunk) => {
-        return amountsChunk.map((amountsOut, cIndex) => {
-          // Ignore bad quotes...
-          // @ts-ignore
-          if (!amountOut || amountOut.length < 1) {
-            return null;
-          }
+  // Split into chunks and get the route quotes...
+  let quotePromises = routeChunks.map((routeChunk) => {
+      return Promise.all(
+          routeChunk
+            .map((route) => router.getAmountsOut(amount, route))
+      ).then((amountChunks) => {
+           return amountChunks.map((amountsOut, cIndex) => {
+               // Ignore bad quotes...
+               // @ts-ignore
+               if (!amountsOut || amountsOut.length < 1) {
+                 return null;
+               }
 
-          // @ts-ignore
-          const amountOut = amountsOut[amountsOut.length - 1];
+               // @ts-ignore
+               const amountOut = amountsOut[amountsOut.length - 1];
 
-          // Ignore zero quotes...
-          // @ts-ignore
-          if (amountOut.isZero()) {
-            return null;
-          }
-
-          return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
-        });
+               // Ignore zero quotes...
+               // @ts-ignore
+               if (amountOut.isZero()) {
+                 return null;
+               }
+               return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
+           })
       });
   });
 
@@ -272,12 +273,13 @@ export async function fetchPriceImpact(quote, provider: Provider) {
 /**
  * Returns the quote for a tokenA -> tokenB
  */
-export function useQuote(
+export async function useQuote(
   pairs,
   fromToken,
   toToken,
   amount,
   provider: Provider
 ) {
-  return fetchQuote(getRoutes(pairs, fromToken, toToken), amount, provider);
+    let routes = getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase());
+  return await fetchQuote(routes, amount, provider);
 }
