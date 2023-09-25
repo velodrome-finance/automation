@@ -1,77 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { readContracts } from "@wagmi/core";
-import { BigNumber, FixedNumber, utils } from "ethers";
 import Graph from "graphology";
-import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 import { chunk, isEmpty } from "lodash";
+import { parseUnits } from "@ethersproject/units";
+import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
+import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS } from "../../constants";
-
-/**
- * Returns the division of two big numbers
- */
-export function divUnsafe(bnA, bnB, decA = 18, decB = 18, decimals = 18) {
-  const a = FixedNumber.fromValue(bnA, decA);
-  const b = FixedNumber.fromValue(bnB, decB);
-
-  if (b.isZero()) {
-    return utils.parseUnits("0", decimals);
-  }
-
-  return utils.parseUnits(a.divUnsafe(b).round(decimals).toString(), decimals);
-}
-
-/**
- * Returns the multiplication of two big numbers
- */
-export function mulUnsafe(bnA, bnB, decA = 18, decB = 18, decimals = 18) {
-  const a = FixedNumber.fromValue(bnA, decA);
-  const b = FixedNumber.fromValue(bnB, decB);
-
-  return utils.parseUnits(a.mulUnsafe(b).round(decimals).toString(), decimals);
-}
-
-/**
- * Returns a new amount with applied slippage percentage
- *
- * Uses `FixedNumber` to assist with fractions.
- *
- * Base `pct` default to 0.
- * If you set `slippage` to 0 and use an arbitrary `pct` you can apply directly
- * a percentage to the `amount`.
- */
-export function applyPct(amount, decimals, slippage, pct = "100") {
-  const estSlippage = FixedNumber.fromString(
-    (parseFloat(pct) - parseFloat(slippage)).toFixed(decimals)
-  ).divUnsafe(FixedNumber.fromString((100.0).toFixed(decimals)));
-
-  const minAmount = FixedNumber.fromValue(amount, decimals).mulUnsafe(
-    estSlippage
-  );
-
-  return utils.parseUnits(minAmount.round(decimals).toString(), decimals);
-}
-
-/**
- * Returns the percentage of two numbers
- *
- * Uses `FixedNumber` to assist with fractions.
- */
-export function pctOf(base, amount, decimals) {
-  const parsedBase = FixedNumber.fromValue(base, decimals);
-
-  if (parsedBase.isZero()) {
-    return utils.parseUnits("0", decimals);
-  }
-
-  const left = FixedNumber.fromString((100.0).toFixed(decimals))
-    .mulUnsafe(FixedNumber.fromValue(amount, decimals))
-    .divUnsafe(parsedBase);
-
-  return utils.parseUnits(left.round(decimals).toString(), decimals);
-}
+import { LIBRARY_ABI, LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS } from "../../constants";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -239,13 +174,11 @@ async function fetchQuote(routes, amount, provider: Provider, chunkSize = 50) {
  * Fetches and calculates the price impact for a quote
  */
 export async function fetchPriceImpact(quote, provider: Provider) {
-  let library_abi =
-    "function getTradeDiff(uint, address, address, bool, address) view returns (uint a, uint b)";
-  const library = new Contract(LIBRARY_ADDRESS, library_abi, provider);
+  let library = new Contract(LIBRARY_ADDRESS, LIBRARY_ABI, provider);
 
   const tradeDiffs = await Promise.all(
     quote.route.map((route, index) =>
-      library.getTradeDiff(
+      library.functions["getTradeDiff(uint256,address,address,bool,address)"](
         quote.amountsOut[index],
         route.from,
         route.to,
@@ -255,19 +188,19 @@ export async function fetchPriceImpact(quote, provider: Provider) {
     )
   );
 
-  let totalRatio = utils.parseUnits("1.0");
+  let totalRatio = parseUnits("1.0");
 
   tradeDiffs.filter(Boolean).forEach((diff) => {
     // @ts-ignore
     if (diff && diff.a.isZero()) {
-      totalRatio = utils.parseUnits("0");
+      totalRatio = parseUnits("0");
     } else {
       // @ts-ignore
       totalRatio = totalRatio.mul(diff.b).div(diff.a);
     }
   });
 
-  return utils.parseUnits("1.0").sub(totalRatio).mul(100);
+  return parseUnits("1.0").sub(totalRatio).mul(100);
 }
 
 /**
@@ -280,6 +213,5 @@ export async function useQuote(
   amount,
   provider: Provider
 ) {
-    let routes = getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase());
-  return await fetchQuote(routes, amount, provider);
+  return await fetchQuote(getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase()), amount, provider);
 }
