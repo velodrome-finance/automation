@@ -1,5 +1,6 @@
 import { abi as compFactoryAbi } from "../../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as compAbi } from "../../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
+import { abi as voterAbi } from "../../../artifacts/lib/contracts/contracts/interfaces/IVoter.sol/IVoter.json";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
 import { abi as erc20Abi } from "../abis/erc20.json";
 //TODO: move constants to constants.ts
@@ -9,10 +10,8 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
 import { fetchBribeRewards, fetchFeeRewards } from "./ve";
-import { fetchPairs } from "./pair";
 
-import { useQuote } from "./quote";
-import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../../constants";
+import { LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../../constants";
 
 // TODO: move type declaration
 // Tokens to be Converted per Relay
@@ -115,85 +114,61 @@ export async function getCompounderTxData(
   let txData: TxData[] = [];
   let contract = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
   let pools = await contract.forSwaps(100, 0); // TODO: Find right value, was using 600, 0
+  // TODO: THIS IS USED FOR TESTING
+  // let voter = new Contract(jsonOutput.Voter, voterAbi, provider);
+  // let mTokenId = await relayInfos[0].contract.mTokenId();
+  // mTokenId = BigNumber.from(4145);
+  // let feeRewards: RewardContractInfo = await fetchFeeRewards(mTokenId, pools, provider);
+  // console.log("REWAJBRKJHASGFJASBJ");
+  // console.log(feeRewards);
+  // let bribeRewards: RewardContractInfo = await fetchBribeRewards(
+  //   mTokenId,
+  //   pools,
+  //   provider
+  // );
+  // console.log("REWAJBRKJHASGFJASBJ");
+  // console.log(bribeRewards);
 
-  console.log("GET COMPOUNDER TX DATA");
   for (let relayInfo of relayInfos) {
-    console.log("HERE");
-    let relay = relayInfo.contract;
-    console.log("HERE");
-    let abi = relay.interface;
+    const relay = relayInfo.contract;
+    const abi = relay.interface;
     //TODO: also encode claimBribes and claimFees
 
-    console.log("HERE");
+    // Fetch Relay Rewards
     let mTokenId = await relay.mTokenId();
-    console.log("HERE");
-    let bribeRewards: Reward[] = await fetchBribeRewards(
+    let feeRewards: RewardContractInfo = await fetchFeeRewards(mTokenId, pools, provider);
+    let bribeRewards: RewardContractInfo = await fetchBribeRewards(
       mTokenId,
       pools,
       provider
     );
-    console.log("HERE");
-    let feeRewards: Reward[] = await fetchFeeRewards(mTokenId, pools, provider);
 
-    console.log("HERE");
+    // Claim all available Rewards
+    let calls: string[] = [
+        abi.encodeFunctionData("claimFees", [Object.keys(feeRewards), Object.values(feeRewards)]),
+        abi.encodeFunctionData("claimBribes", [Object.keys(bribeRewards), Object.values(bribeRewards)])
+    ];
 
     // Swap all Relay Tokens to VELO
-    let calls: string[] = relayInfo.tokens.map((token) =>
+    calls.concat(relayInfo.tokens.map((token) =>
       abi.encodeFunctionData("swapTokenToVELOKeeper", [
         [getRoute(token.address, jsonConstants.v2.VELO)],
         token.balance,
         1,
       ])
-    );
-
-    console.log("HERE");
-    let hashMap = {} as RewardContractInfo;
-
-    bribeRewards.forEach((reward) => {
-      let key = reward.bribe;
-      if (!(key in hashMap)) {
-        hashMap[key] = [reward.token];
-      } else {
-        hashMap[key].push(reward.token);
-      }
-    });
-
-    console.log("BRIBE REWARDSSS");
-    console.log(hashMap);
+    ));
 
     calls.pop(); //TODO: removing frax there is no routing for it yet
     calls.push(abi.encodeFunctionData("compound"));
     txData.push({
       to: relay.address,
       data: abi.encodeFunctionData("multicall", [calls]),
+      //TODO: Used for testing of claimFees and claimBribes
+      // to: voter.address,
+      // data: voter.interface.encodeFunctionData("claimFees", [Object.keys(feeRewards), Object.values(feeRewards), 4145]),
+      // data: voter.interface.encodeFunctionData("claimBribes", [Object.keys(bribeRewards), Object.values(bribeRewards), 4145]),
     } as TxData);
   }
-
-  // // Encode multicall for each Relay
-  // relayInfos.forEach((relayInfo: RelayInfo) => {
-  //   let relay = relayInfo.contract;
-  //   let abi = relay.interface;
-  //   //TODO: also encode claimBribes and claimFees
-  //   //
-  //   fetchBribeRewards(mTokenId, pools, provider);
-  //   fetchFeeRewards(mTokenId, pools, provider);
-  //
-  //   // Swap all Relay Tokens to VELO
-  //   let calls: string[] = relayInfo.tokens.map((token) =>
-  //     abi.encodeFunctionData("swapTokenToVELOKeeper", [
-  //       [getRoute(token.address, jsonConstants.v2.VELO)],
-  //       token.balance,
-  //       1,
-  //     ])
-  //   );
-  //   calls.pop(); //TODO: removing frax there is no routing for it yet
-  //   calls.push(abi.encodeFunctionData("compound"));
-  //   txData.push({
-  //     to: relay.address,
-  //     data: abi.encodeFunctionData("multicall", [calls]),
-  //   } as TxData);
-  // });
-  // console.log(txData);
   return txData;
 }
 
