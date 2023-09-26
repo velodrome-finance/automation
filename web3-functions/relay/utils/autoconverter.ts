@@ -1,40 +1,13 @@
-import { abi as convFactoryAbi } from "../../../artifacts/src/autoConverter/AutoConverterFactory.sol/AutoConverterFactory.json";
 import { abi as compFactoryAbi } from "../../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as convAbi } from "../../../artifacts/src/autoConverter/AutoConverter.sol/AutoConverter.json";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
 import { abi as erc20Abi } from "../abis/erc20.json";
-//TODO: move constants to constants.ts
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-// TODO: move type declaration
-// Tokens to be Converted per Relay
-export type RelayInfo = {
-  // Relay Contract
-  contract: Contract;
-  // All tokens to compound
-  tokens: RelayToken[];
-}
-
-// Token address paired with its Balance
-export type RelayToken = {
-  address: string;
-  balance: BigNumber;
-}
-
-export type TxData = {
-  to: string;
-  data: string;
-}
-
-export type Route = {
-  from: string;
-  to: string;
-  stable: boolean;
-  factory: string;
-}
+import { RelayInfo, RelayToken, TxData, Route } from "../utils/constants";
 
 // From a list of Token addresses, filters out Tokens with no balance
 export async function getTokensToConvert(
@@ -76,7 +49,11 @@ export async function getConverterRelayInfos(
   );
 
   // TODO: Fix getting tokens to swap
-  let compounderFactory: Contract = new Contract("0xd4C6eDDBE963aFA2D7b1562d0F2F3F9462E6525b", compFactoryAbi, provider);
+  let compounderFactory: Contract = new Contract(
+    "0xd4C6eDDBE963aFA2D7b1562d0F2F3F9462E6525b",
+    compFactoryAbi,
+    provider
+  );
   // Fetch all High Liquidity Tokens
   tokensToSwap = await compounderFactory.highLiquidityTokens();
 
@@ -93,9 +70,13 @@ export async function getConverterRelayInfos(
 }
 
 // Converts a list of RelayInfos into the calls necessary for the Converting
-export async function getConverterTxData(relayInfos: RelayInfo[]): Promise<TxData[]> {
+export async function getConverterTxData(
+  relayInfos: RelayInfo[]
+): Promise<TxData[]> {
   let txData: TxData[] = [];
-  let destinationTokens: string[] = await Promise.all(relayInfos.map((info) => info.contract.token()));
+  let destinationTokens: string[] = await Promise.all(
+    relayInfos.map((info) => info.contract.token())
+  );
   // Encode multicall for each Relay
   relayInfos.forEach((relayInfo: RelayInfo, i: number) => {
     let relay = relayInfo.contract;
@@ -120,18 +101,21 @@ export async function getConverterTxData(relayInfos: RelayInfo[]): Promise<TxDat
     // });
     let destinationToken: string = destinationTokens[i];
     let calls: string[] = relayInfo.tokens.map((token) => {
-      if(token.address == destinationToken) // TODO: Finish excluding destination token
-          token.address = jsonConstants.v2.VELO;
+      if (token.address == destinationToken)
+        // TODO: Finish excluding destination token
+        token.address = jsonConstants.v2.VELO;
       return abi.encodeFunctionData("swapTokenToToken", [
         [getRoute(token.address, destinationToken)],
         token.balance,
         1,
-      ])
+      ]);
     });
 
     calls.pop(); //TODO: removing frax there is no routing for it yet
 
-    txData = txData.concat(calls.map((call) => ({to: relay.address, data: call} as TxData)));
+    txData = txData.concat(
+      calls.map((call) => ({ to: relay.address, data: call } as TxData))
+    );
   });
   return txData;
 }

@@ -18,7 +18,6 @@ import {
 } from "@gelatonetwork/web3-functions-sdk";
 import { Web3FunctionHardhat } from "@gelatonetwork/web3-functions-sdk/hardhat-plugin";
 
-import jsonConstants from "../lib/relay-private/script/constants/Optimism.json";
 import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
 
 import {
@@ -33,7 +32,7 @@ import { abi as erc20Abi } from "../web3-functions/relay/abis/erc20.json";
 import { Contract } from "@ethersproject/contracts";
 import { Libraries } from "hardhat/types";
 import { BigNumber } from "ethers";
-import { DAY } from "../web3-functions/constants";
+import { DAY } from "../web3-functions/relay/utils/constants";
 import { hexZeroPad } from "ethers/lib/utils";
 const { ethers, deployments, w3f } = hre;
 
@@ -237,11 +236,10 @@ describe("AutoConverter Automation Tests", function () {
     }
 
     // Warp to the last timestamp of the First Day
-    let day = 24 * 60 * 60;
     let timestamp = await time.latest();
-    let endOfFirstDay = timestamp - (timestamp % (7 * day)) + day;
+    let endOfFirstDay = timestamp - (timestamp % (7 * DAY)) + DAY;
     let newTimestamp =
-      endOfFirstDay >= timestamp ? endOfFirstDay : endOfFirstDay + 7 * day;
+      endOfFirstDay >= timestamp ? endOfFirstDay : endOfFirstDay + 7 * DAY;
     time.increaseTo(newTimestamp);
 
     relayW3f = w3f.get("relay");

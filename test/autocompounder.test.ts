@@ -35,7 +35,7 @@ import { Contract } from "@ethersproject/contracts";
 import { AbiCoder } from "@ethersproject/abi";
 import { Libraries } from "hardhat/types";
 import { BigNumber } from "ethers";
-import { DAY } from "../web3-functions/constants";
+import { DAY } from "../web3-functions/relay/utils/constants";
 const { ethers, deployments, w3f } = hre;
 
 interface BalanceSlot {

@@ -3,7 +3,6 @@ import { abi as compAbi } from "../../../artifacts/src/autoCompounder/AutoCompou
 import { abi as voterAbi } from "../../../artifacts/lib/contracts/contracts/interfaces/IVoter.sol/IVoter.json";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
 import { abi as erc20Abi } from "../abis/erc20.json";
-//TODO: move constants to constants.ts
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
@@ -11,51 +10,7 @@ import { Provider } from "@ethersproject/providers";
 
 import { fetchBribeRewards, fetchFeeRewards } from "./ve";
 
-import { LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../../constants";
-
-import { useQuote } from "./quote";
-import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../../constants";
-
-
-// TODO: move type declaration
-// Tokens to be Converted per Relay
-export type RelayInfo = {
-  // Relay Contract
-  contract: Contract;
-  // All tokens to compound
-  tokens: RelayToken[];
-};
-
-// Token address paired with its Balance
-export type RelayToken = {
-  address: string;
-  balance: BigNumber;
-};
-
-export type TxData = {
-  to: string;
-  data: string;
-};
-
-export type Route = {
-  from: string;
-  to: string;
-  stable: boolean;
-  factory: string;
-};
-
-export type Reward = {
-  venft_id: number;
-  lp: string;
-  amount: BigNumber;
-  token: string;
-  fee: string;
-  bribe: string;
-};
-
-export type RewardContractInfo = {
-  [key: string]: string[];
-};
+import { LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../utils/constants";
 
 // From a list of Token addresses, filters out Tokens with no balance
 export async function getTokensToCompound(
@@ -140,7 +95,11 @@ export async function getCompounderTxData(
 
     // Fetch Relay Rewards
     let mTokenId = await relay.mTokenId();
-    let feeRewards: RewardContractInfo = await fetchFeeRewards(mTokenId, pools, provider);
+    let feeRewards: RewardContractInfo = await fetchFeeRewards(
+      mTokenId,
+      pools,
+      provider
+    );
     let bribeRewards: RewardContractInfo = await fetchBribeRewards(
       mTokenId,
       pools,
@@ -149,18 +108,26 @@ export async function getCompounderTxData(
 
     // Claim all available Rewards
     let calls: string[] = [
-        abi.encodeFunctionData("claimFees", [Object.keys(feeRewards), Object.values(feeRewards)]),
-        abi.encodeFunctionData("claimBribes", [Object.keys(bribeRewards), Object.values(bribeRewards)])
+      abi.encodeFunctionData("claimFees", [
+        Object.keys(feeRewards),
+        Object.values(feeRewards),
+      ]),
+      abi.encodeFunctionData("claimBribes", [
+        Object.keys(bribeRewards),
+        Object.values(bribeRewards),
+      ]),
     ];
 
     // Swap all Relay Tokens to VELO
-    calls.concat(relayInfo.tokens.map((token) =>
-      abi.encodeFunctionData("swapTokenToVELOKeeper", [
-        [getRoute(token.address, jsonConstants.v2.VELO)],
-        token.balance,
-        1,
-      ])
-    ));
+    calls.concat(
+      relayInfo.tokens.map((token) =>
+        abi.encodeFunctionData("swapTokenToVELOKeeper", [
+          [getRoute(token.address, jsonConstants.v2.VELO)],
+          token.balance,
+          1,
+        ])
+      )
+    );
 
     calls.pop(); //TODO: removing frax there is no routing for it yet
     calls.push(abi.encodeFunctionData("compound"));

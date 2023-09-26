@@ -2,33 +2,26 @@ import {
   Web3Function,
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
-//TODO: move constants to constants.ts
 import {
   getCompounderRelayInfos,
   getCompounderTxData,
-  RelayInfo,
-  TxData,
 } from "./utils/autocompounder";
 import {
   getConverterRelayInfos,
   getConverterTxData,
-  RelayInfo,
-  TxData,
 } from "./utils/autoconverter";
+import { RelayInfo, TxData } from "./utils/constants";
 import { abi as compounderFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as converterFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
 import { abi as relayAbi } from "../../artifacts/src/Relay.sol/Relay.json";
-import { abi as erc20Abi } from "./abis/erc20.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-import { useContractRead } from "wagmi";
-import { useQuote } from "./utils/quote";
-import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../constants";
+import { WEEK, DAY } from "./utils/constants";
 
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
