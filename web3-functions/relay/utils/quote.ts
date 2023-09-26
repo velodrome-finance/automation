@@ -14,7 +14,7 @@ import { LIBRARY_ABI, LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS, Route } from 
  * We build the edge keys using the pair address and the direction.
  */
 export function buildGraph(pairs) {
-  const graph = new Graph();
+  const graph = new Graph({ multi: true });
   const pairsByAddress = {};
 
   pairs.forEach((pair) => {
@@ -66,10 +66,10 @@ function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 3): Rout
     return [];
   }
 
-  let paths = [];
+  let graphPaths = [];
 
   try {
-    paths = allSimpleEdgeGroupPaths(
+    graphPaths = allSimpleEdgeGroupPaths(
       graph,
       fromToken,
       toToken,
@@ -79,33 +79,41 @@ function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 3): Rout
     return [];
   }
 
-  return paths
-    .map((pathSet) => {
-      const mappedPathSet = pathSet.map((pairAddresses) => {
-        const pairAddressWithDirection = pairAddresses[0];
+  const paths = [];
+
+  graphPaths.map((pathSet) => {
+    let mappedPathSets = [];
+
+    pathSet.map((pairAddresses, index) => {
+      const currentMappedPathSets = [];
+      pairAddresses.map((pairAddressWithDirection) => {
         const [dir, pairAddress] = pairAddressWithDirection.split(":");
         const pair = pairsByAddress[pairAddress];
-
-        if (dir === "reversed") {
-          return {
-            from: pair.token1,
-            to: pair.token0,
-            stable: pair.stable,
-            factory: pair.factory,
-          };
-        }
-
-        return {
+        const routeComponent = {
           from: pair.token0,
           to: pair.token1,
           stable: pair.stable,
           factory: pair.factory,
         };
+        if (dir === "reversed") {
+          routeComponent.from = pair.token1;
+          routeComponent.to = pair.token0;
+        }
+
+        index == 0
+          ? currentMappedPathSets.push([routeComponent])
+          : mappedPathSets.map((incompleteSet) => {
+              currentMappedPathSets.push(
+                incompleteSet.concat([routeComponent])
+              );
+            });
       });
 
-      return mappedPathSet;
-    })
-    .filter((pathSet) => !isEmpty(pathSet));
+      mappedPathSets = [...currentMappedPathSets];
+    });
+    paths.push(...mappedPathSets);
+  });
+  return paths;
 }
 
 /**
