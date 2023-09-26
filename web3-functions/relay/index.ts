@@ -118,8 +118,14 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   }
 
   // Encode all needed calls based on tokens to compound
-  let compounderTxData: TxData[] = await getCompounderTxData(compounderInfos, provider);
-  let converterTxData: TxData[] = await getConverterTxData(converterInfos, provider);
+  let compounderTxData: TxData[] = await getCompounderTxData(
+    compounderInfos,
+    provider
+  );
+  let converterTxData: TxData[] = await getConverterTxData(
+    converterInfos,
+    provider
+  );
 
   // Return execution call data
   return {
