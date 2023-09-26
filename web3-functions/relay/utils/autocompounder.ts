@@ -13,6 +13,10 @@ import { fetchBribeRewards, fetchFeeRewards } from "./ve";
 
 import { LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../../constants";
 
+import { useQuote } from "./quote";
+import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../../constants";
+
+
 // TODO: move type declaration
 // Tokens to be Converted per Relay
 export type RelayInfo = {
