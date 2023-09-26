@@ -2,8 +2,9 @@ import { constants, utils } from "ethers";
 import { optimism } from "wagmi/chains";
 
 import lp_sugar_abi from "./relay/abis/lp_sugar.json";
-import router_abi from "./relay/abis/router.json";
 import ve_sugar_abi from "./relay/abis/ve_sugar.json";
+import library_abi from "./relay/abis/library.json";
+import router_abi from "./relay/abis/router.json";
 
 export const DAY = 24 * 60 * 60;
 export const WEEK = 7 * DAY;
@@ -11,6 +12,7 @@ export const WEEK = 7 * DAY;
 export const ZERO_ADDRESS = constants.AddressZero;
 export const LP_SUGAR_ABI = lp_sugar_abi;
 export const VE_SUGAR_ABI = ve_sugar_abi;
+export const LIBRARY_ABI = library_abi;
 export const ROUTER_ABI = router_abi;
 
 export const LP_SUGAR_ADDRESS = "0x4d996e294b00ce8287c16a2b9a4e637eca5c939f";

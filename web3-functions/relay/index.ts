@@ -27,7 +27,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
 import { useContractRead } from "wagmi";
-import { useQuote } from "./hooks/quote";
+import { useQuote } from "./utils/quote";
 import { WEEK, DAY, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../constants";
 
 // Retrieve all Relay Factories from the Registry
@@ -86,10 +86,6 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   let compounderInfos: RelayInfo[] = [];
   let converterInfos: RelayInfo[] = [];
-
-  //TODO: move to constants
-  const DAY = 24 * 60 * 60;
-  const WEEK = 7 * DAY;
 
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
