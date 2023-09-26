@@ -246,28 +246,16 @@ describe("AutoCompounder Automation Tests", function () {
     let factories = await relayFactoryRegistry.getAll();
     let tokensToCompound = [usdc, dai, weth, velo];
 
-    //TODO: DELETE THIS LINE
-    let testguy = await escrow.ownerOf(4145);
     // All balances were minted correctly for all Relays
     let oldBalances = [];
-    console.log("==============================");
-    console.log("USER BALANCES BEFORE CLAIMING:");
     for (const i in relays) {
-      console.log("==============================");
       for (const token of tokensToCompound) {
         expect(await token.balanceOf(relays[i])).closeTo(
           BigNumber.from(10).pow(23),
           BigNumber.from(10).pow(17)
         );
-        // let feeAddr = "0x9291E1E76561749AF097F86B02C39F603f60d910";
-        // let balance = await token.balanceOf(feeAddr);
-        // let bribeAddr = "0xd57e9480234F2ac9321a48d875688827d2271451";
-        // let balance = await token.balanceOf(bribeAddr);
-        // console.log(`TOKEN: ${token.address}, AMOUNT: ${balance}`)
-        console.log(`TOKEN: ${token.address}, AMOUNT: ${await token.balanceOf(testguy)}`)
       }
       let oldBal = await escrow.balanceOfNFT(mTokens[i]);
-      console.log(`VE AMOUNT: ${oldBal}`)
       expect(oldBal).to.equal(BigNumber.from(10).pow(18));
       oldBalances.push(oldBal);
     }
@@ -277,36 +265,16 @@ describe("AutoCompounder Automation Tests", function () {
     result = result as Web3FunctionResultV2;
     expect(result.canExec).to.equal(true);
 
-    // TODO: THIS IS BEING USED FOR TEST PURPOSES VVV
-    await setBalance(testguy, 100e18);
-    await impersonateAccount(testguy);
-    let manager = await ethers.getSigner(testguy);
     for (let call of result.callData) {
-      await manager.sendTransaction({ to: call.to, data: call.data });
+      await owner.sendTransaction({ to: call.to, data: call.data });
     }
-    // TODO: THIS IS BEING USED FOR TEST PURPOSES ^^^
-
-    // for (let call of result.callData) {
-    //   await owner.sendTransaction({ to: call.to, data: call.data });
-    // }
 
     // All balances were Swapped to VELO and compounded correctly for all Relays
-    console.log("==============================");
-    console.log("USER BALANCES AFTER CLAIMING:");
     for (const i in relays) {
-      console.log("==============================");
       for (const token of tokensToCompound) {
-        // expect(await token.balanceOf(relays[i])).to.equal(0);
-        // let feeAddr = "0x9291E1E76561749AF097F86B02C39F603f60d910";
-        // let balance = await token.balanceOf(feeAddr);
-        // let bribeAddr = "0xd57e9480234F2ac9321a48d875688827d2271451";
-        // let balance = await token.balanceOf(bribeAddr);
-        // console.log(`TOKEN: ${token.address}, AMOUNT: ${balance}`)
-        console.log(`TOKEN: ${token.address}, AMOUNT: ${await token.balanceOf(testguy)}`)
+        expect(await token.balanceOf(relays[i])).to.equal(0);
       }
-      // expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
-      let vebal = await escrow.balanceOfNFT(mTokens[i]);
-      console.log(`VE AMOUNT: ${vebal}`)
+      expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
     }
   });
   it("Cannot execute if after first day of script", async () => {
