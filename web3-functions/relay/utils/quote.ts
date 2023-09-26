@@ -6,7 +6,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { LIBRARY_ABI, LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS } from "../../constants";
+import { LIBRARY_ABI, LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS, Route } from "./constants";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -54,7 +54,7 @@ export function buildGraph(pairs) {
  *    ]
  *  ]
  */
-function getRoutes(pairs, fromToken, toToken, maxHops = 3) {
+function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 3): Route[][] {
   if (isEmpty(pairs) || !fromToken || !toToken) {
     return [];
   }
@@ -115,13 +115,13 @@ function getRoutes(pairs, fromToken, toToken, maxHops = 3) {
  * if the quoted amount is the same. This should theoretically limit
  * the price impact on a trade.
  */
-async function fetchQuote(routes, amount, provider: Provider, chunkSize = 50) {
+async function fetchQuote(routes: Route[][], amount: BigNumber, provider: Provider, chunkSize = 50) {
   const routeChunks = chunk(routes, chunkSize);
   let router: Contract = new Contract(ROUTER_ADDRESS,ROUTER_ABI, provider);
   amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
 
   // Split into chunks and get the route quotes...
-  let quotePromises = routeChunks.map((routeChunk) => {
+  let quoteChunks = await Promise.all(routeChunks.map(async (routeChunk: Route[][]) => {
       return Promise.all(
           routeChunk
             .map((route) => router.getAmountsOut(amount, route))
@@ -144,9 +144,7 @@ async function fetchQuote(routes, amount, provider: Provider, chunkSize = 50) {
                return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
            })
       });
-  });
-
-  const quoteChunks = await Promise.all(quotePromises);
+  }));
 
   // Filter out bad quotes and find the best one...
   const bestQuote = quoteChunks
@@ -177,7 +175,7 @@ export async function fetchPriceImpact(quote, provider: Provider) {
   let library = new Contract(LIBRARY_ADDRESS, LIBRARY_ABI, provider);
 
   const tradeDiffs = await Promise.all(
-    quote.route.map((route, index) =>
+    quote.route.map((route: Route, index: number) =>
       library.functions["getTradeDiff(uint256,address,address,bool,address)"](
         quote.amountsOut[index],
         route.from,
@@ -208,10 +206,10 @@ export async function fetchPriceImpact(quote, provider: Provider) {
  */
 export async function useQuote(
   pairs,
-  fromToken,
-  toToken,
-  amount,
+  fromToken: string,
+  toToken: string,
+  amount: BigNumber,
   provider: Provider
-) {
-  return await fetchQuote(getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase()), amount, provider);
+): Promise<Route[]> {
+  return (await fetchQuote(getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase()), amount, provider)).route;
 }
