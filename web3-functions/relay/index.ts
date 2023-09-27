@@ -11,7 +11,12 @@ import {
   getConverterTxData,
 } from "./utils/autoconverter";
 import { RelayInfo, TxData } from "./utils/constants";
+// import { abi as compounderFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
+// import { abi as converterFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
+import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
+// import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
+// import { abi as relayAbi } from "../../artifacts/src/Relay.sol/Relay.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
@@ -25,17 +30,12 @@ async function getFactoriesFromRegistry(
 ): Promise<Contract[]> {
   let relayFactoryRegistry = new Contract(
     registryAddr,
-    "function getAll() view returns (address[] memory)",
+    ["function getAll() view returns (address[] memory)"],
     provider
   );
 
   return (await relayFactoryRegistry.getAll()).map(
-    (f: string) =>
-      new Contract(
-        f,
-        "function relays() view returns (address[] memory)",
-        provider
-      )
+    (f: string) => new Contract(f, factoryAbi, provider)
   );
 }
 
@@ -54,7 +54,7 @@ async function getRelayInfos(
     if (relayAddresses.length != 0) {
       let token = await new Contract(
         relayAddresses[0],
-        "function token() view returns (address)",
+        ["function token() view returns (address)"],
         provider
       ).token();
 
@@ -62,7 +62,7 @@ async function getRelayInfos(
         // Fetch all High Liquidity Tokens for AutoCompounder
         factory = new Contract(
           factory.address,
-          "function highLiquidityTokens() external view returns (address[] memory)",
+          ["function highLiquidityTokens() view returns (address[] memory)"],
           provider
         );
         let tokensToSwap: string[] = await factory.highLiquidityTokens();
