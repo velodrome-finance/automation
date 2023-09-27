@@ -48,12 +48,9 @@ export type Route = {
 };
 
 export type Reward = {
-  venft_id: number;
-  lp: string;
-  amount: BigNumber;
-  token: string;
   fee: string;
   bribe: string;
+  token: string;
 };
 
 export type RewardContractInfo = {

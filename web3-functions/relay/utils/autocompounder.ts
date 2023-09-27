@@ -1,6 +1,4 @@
-import { abi as compFactoryAbi } from "../../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as compAbi } from "../../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { abi as voterAbi } from "../../../artifacts/lib/contracts/contracts/interfaces/IVoter.sol/IVoter.json";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
 import { abi as erc20Abi } from "../abis/erc20.json";
 
@@ -8,9 +6,9 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-import { fetchBribeRewards, fetchFeeRewards } from "./ve";
 
-import { LP_SUGAR_ADDRESS, LP_SUGAR_ABI, RelayToken, RelayInfo, TxData, RewardContractInfo, Route } from "../utils/constants";
+import { RelayToken, RelayInfo, TxData, Route } from "../utils/constants";
+import { getClaimCalls } from "./ve";
 import { useQuote } from "./quote";
 
 // From a list of Token addresses, filters out Tokens with no balance
@@ -48,8 +46,6 @@ export async function getCompounderRelayInfos(
   let relays: Contract[] = relayAddrs.map(
     (r: string) => new Contract(r, compAbi, provider)
   );
-  // let highLiqTokens: string[] =
-  //   await autoCompounderFactory.highLiquidityTokens();
 
   // Retrieve tokens to be compounded for each Relay
   let tokenPromises: Promise<RelayToken[]>[] = relays.map(async (relay) =>
@@ -59,10 +55,7 @@ export async function getCompounderRelayInfos(
   relays.forEach((relay, index) => {
     relayInfos.push({ contract: relay, tokens: relayTokens[index] });
   });
-  // relayInfos.forEach((info) => {
-  //     console.log(`Relay: ${info.contract.address}`);
-  //     info.tokens.forEach((token) => console.log(`Address: ${token.address}, Balance: ${token.balance}`));
-  // })
+
   return relayInfos;
 }
 
@@ -72,73 +65,30 @@ export async function getCompounderTxData(
   provider: Provider
 ): Promise<TxData[]> {
   let txData: TxData[] = [];
-  let contract = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
-  let pools = await contract.forSwaps(100, 0); // TODO: Find right value, was using 600, 0
-  // TODO: THIS IS USED FOR TESTING
-  // let voter = new Contract(jsonOutput.Voter, voterAbi, provider);
-  // let mTokenId = await relayInfos[0].contract.mTokenId();
-  // mTokenId = BigNumber.from(4145);
-  // let feeRewards: RewardContractInfo = await fetchFeeRewards(mTokenId, pools, provider);
-  // console.log("REWAJBRKJHASGFJASBJ");
-  // console.log(feeRewards);
-  // let bribeRewards: RewardContractInfo = await fetchBribeRewards(
-  //   mTokenId,
-  //   pools,
-  //   provider
-  // );
-  // console.log("REWAJBRKJHASGFJASBJ");
-  // console.log(bribeRewards);
 
   for (let relayInfo of relayInfos) {
     const relay = relayInfo.contract;
     const abi = relay.interface;
-    //TODO: also encode claimBribes and claimFees
 
     // Fetch Relay Rewards
-    let mTokenId = await relay.mTokenId();
-    let feeRewards: RewardContractInfo = await fetchFeeRewards(
-      mTokenId,
-      pools,
-      provider
-    );
-    let bribeRewards: RewardContractInfo = await fetchBribeRewards(
-      mTokenId,
-      pools,
-      provider
-    );
-
-    // Claim all available Rewards
-    let calls: string[] = [
-      abi.encodeFunctionData("claimFees", [
-        Object.keys(feeRewards),
-        Object.values(feeRewards),
-      ]),
-      abi.encodeFunctionData("claimBribes", [
-        Object.keys(bribeRewards),
-        Object.values(bribeRewards),
-      ]),
-    ];
+    let calls: string[] = await getClaimCalls(relay, 75);
 
     // Swap all Relay Tokens to VELO
-    calls.concat(
-      relayInfo.tokens.map((token) =>
-        abi.encodeFunctionData("swapTokenToVELOKeeper", [
-          [getRoute(token.address, jsonConstants.v2.VELO)],
-          token.balance,
-          1,
-        ])
-      )
-    );
+    for(let token of relayInfo.tokens) {
+        calls.push(
+          abi.encodeFunctionData("swapTokenToVELOKeeper", [
+            (await useQuote(token.address, jsonConstants.v2.VELO, token.balance, provider)),
+            token.balance,
+            1,
+          ])
+        );
+    }
 
-    calls.pop(); //TODO: removing frax there is no routing for it yet
+    // Compound all Tokens
     calls.push(abi.encodeFunctionData("compound"));
     txData.push({
       to: relay.address,
       data: abi.encodeFunctionData("multicall", [calls]),
-      //TODO: Used for testing of claimFees and claimBribes
-      // to: voter.address,
-      // data: voter.interface.encodeFunctionData("claimFees", [Object.keys(feeRewards), Object.values(feeRewards), 4145]),
-      // data: voter.interface.encodeFunctionData("claimBribes", [Object.keys(bribeRewards), Object.values(bribeRewards), 4145]),
     } as TxData);
   }
   return txData;
