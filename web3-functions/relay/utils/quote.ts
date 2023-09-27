@@ -54,7 +54,7 @@ export function buildGraph(pairs) {
  *    ]
  *  ]
  */
-function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 3): Route[][] {
+function getRoutes(pairs, fromToken: string, toToken: string, provider: Provider, maxHops = 3): Route[][] {
   if (isEmpty(pairs) || !fromToken || !toToken) {
     return [];
   }
@@ -213,12 +213,11 @@ export async function fetchPriceImpact(quote, provider: Provider) {
  * Returns the quote for a tokenA -> tokenB
  */
 export async function useQuote(
+  pairs,
   fromToken: string,
   toToken: string,
   amount: BigNumber,
   provider: Provider
 ): Promise<Route[]> {
-  const contract = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
-  const pools = await contract.forSwaps(60, 0); // TODO: Find right value, was using 600, 0
-  return (await fetchQuote(getRoutes(pools, fromToken.toLowerCase(), toToken.toLowerCase()), amount, provider)).route;
+  return (await fetchQuote(await getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase(), provider), amount, provider)).route;
 }
