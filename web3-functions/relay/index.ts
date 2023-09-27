@@ -11,12 +11,7 @@ import {
   getConverterTxData,
 } from "./utils/autoconverter";
 import { RelayInfo, TxData } from "./utils/constants";
-import { abi as compounderFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
-import { abi as converterFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
-import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
-import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
-import { abi as relayAbi } from "../../artifacts/src/Relay.sol/Relay.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
@@ -28,10 +23,19 @@ async function getFactoriesFromRegistry(
   registryAddr: string,
   provider: Provider
 ): Promise<Contract[]> {
-  let relayFactoryRegistry = new Contract(registryAddr, registryAbi, provider);
+  let relayFactoryRegistry = new Contract(
+    registryAddr,
+    "function getAll() view returns (address[] memory)",
+    provider
+  );
 
   return (await relayFactoryRegistry.getAll()).map(
-    (f: string) => new Contract(f, factoryAbi, provider)
+    (f: string) =>
+      new Contract(
+        f,
+        "function relays() view returns (address[] memory)",
+        provider
+      )
   );
 }
 
@@ -50,20 +54,24 @@ async function getRelayInfos(
     if (relayAddresses.length != 0) {
       let token = await new Contract(
         relayAddresses[0],
-        relayAbi,
+        "function token() view returns (address)",
         provider
       ).token();
 
       if (token == jsonConstants.v2.VELO) {
         // Fetch all High Liquidity Tokens for AutoCompounder
-        factory = new Contract(factory.address, compounderFactoryAbi, provider);
+        factory = new Contract(
+          factory.address,
+          "function highLiquidityTokens() external view returns (address[] memory)",
+          provider
+        );
         let tokensToSwap: string[] = await factory.highLiquidityTokens();
         compounderInfos = compounderInfos.concat(
           await getCompounderRelayInfos(relayAddresses, tokensToSwap, provider)
         );
       } else {
         //TODO: Fetch tokens to swap
-        factory = new Contract(factory.address, converterFactoryAbi, provider);
+        // factory = new Contract(factory.address, converterFactoryAbi, provider);
         converterInfos = converterInfos.concat(
           await getConverterRelayInfos(relayAddresses, [], provider)
         );
