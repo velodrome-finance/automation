@@ -65,10 +65,6 @@ const storageSlots: StorageList = {
     address: "0x4200000000000000000000000000000000000006",
     slot: 3,
   } as BalanceSlot,
-  frax: {
-    address: "0x2E3D870790dC77A83DD1d18184Acc7439A53f475",
-    slot: 0,
-  },
 };
 
 async function createAutoCompounder(
@@ -166,7 +162,6 @@ describe("AutoCompounder Automation Tests", function () {
 
   let dai: ERC20;
   let usdc: ERC20;
-  let frax: ERC20;
   let weth: ERC20;
   let velo: ERC20;
   let relays: string[];
@@ -193,7 +188,6 @@ describe("AutoCompounder Automation Tests", function () {
 
     dai = await ethers.getContractAt(erc20Abi, storageSlots["dai"].address);
     usdc = await ethers.getContractAt(erc20Abi, storageSlots["usdc"].address);
-    frax = await ethers.getContractAt(erc20Abi, storageSlots["frax"].address);
     weth = await ethers.getContractAt(erc20Abi, storageSlots["weth"].address);
     velo = await ethers.getContractAt(erc20Abi, storageSlots["velo"].address);
 
