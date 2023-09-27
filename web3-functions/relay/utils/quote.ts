@@ -6,7 +6,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { LIBRARY_ABI, LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS, Route } from "./constants";
+import { LIBRARY_ABI, LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS, LP_SUGAR_ADDRESS, LP_SUGAR_ABI, Route } from "./constants";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -213,11 +213,12 @@ export async function fetchPriceImpact(quote, provider: Provider) {
  * Returns the quote for a tokenA -> tokenB
  */
 export async function useQuote(
-  pairs,
   fromToken: string,
   toToken: string,
   amount: BigNumber,
   provider: Provider
 ): Promise<Route[]> {
-  return (await fetchQuote(getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase()), amount, provider)).route;
+  const contract = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
+  const pools = await contract.forSwaps(60, 0); // TODO: Find right value, was using 600, 0
+  return (await fetchQuote(getRoutes(pools, fromToken.toLowerCase(), toToken.toLowerCase()), amount, provider)).route;
 }
