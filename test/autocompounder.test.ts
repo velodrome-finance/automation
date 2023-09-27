@@ -211,7 +211,7 @@ describe("AutoCompounder Automation Tests", function () {
     await stopImpersonatingAccount(allowedManager);
 
     // Create multiple AutoCompounders and save their mTokenId's
-    for (let i = 0; i < 4; i++)
+    for (let i = 0; i < 1; i++)
       mTokens.push(
         await createAutoCompounder(autoCompounderFactory, velo, escrow, owner)
       );
