@@ -282,4 +282,10 @@ describe("AutoCompounder Automation Tests", function () {
     let { result } = await relayW3f.run();
     expect(result.canExec).to.equal(false);
   });
+  it("Cannot execute twice in a day", async () => {
+    await relayW3f.run();
+    time.increase(DAY - 1);
+    let { result } = await relayW3f.run();
+    expect(result.canExec).to.equal(false);
+  });
 });
