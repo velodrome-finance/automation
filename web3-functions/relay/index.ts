@@ -11,12 +11,8 @@ import {
   getConverterTxData,
 } from "./utils/autoconverter";
 import { RelayInfo, TxData } from "./utils/constants";
-// import { abi as compounderFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
-// import { abi as converterFactoryAbi } from "../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
-// import { abi as registryAbi } from "../../artifacts/src/Registry.sol/Registry.json";
-// import { abi as relayAbi } from "../../artifacts/src/Relay.sol/Relay.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
