@@ -54,7 +54,7 @@ export function buildGraph(pairs) {
  *    ]
  *  ]
  */
-function getRoutes(pairs, fromToken: string, toToken: string, provider: Provider, maxHops = 3): Route[][] {
+export function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 2): Route[][] {
   if (isEmpty(pairs) || !fromToken || !toToken) {
     return [];
   }
@@ -123,7 +123,7 @@ function getRoutes(pairs, fromToken: string, toToken: string, provider: Provider
  * if the quoted amount is the same. This should theoretically limit
  * the price impact on a trade.
  */
-async function fetchQuote(routes: Route[][], amount: BigNumber, provider: Provider, chunkSize = 50) {
+export async function fetchQuote(routes: Route[][], amount: BigNumber, provider: Provider, chunkSize = 50) {
   const routeChunks = chunk(routes, chunkSize);
   let router: Contract = new Contract(ROUTER_ADDRESS,ROUTER_ABI, provider);
   amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
@@ -207,17 +207,4 @@ export async function fetchPriceImpact(quote, provider: Provider) {
   });
 
   return parseUnits("1.0").sub(totalRatio).mul(100);
-}
-
-/**
- * Returns the quote for a tokenA -> tokenB
- */
-export async function useQuote(
-  pairs,
-  fromToken: string,
-  toToken: string,
-  amount: BigNumber,
-  provider: Provider
-): Promise<Route[]> {
-  return (await fetchQuote(await getRoutes(pairs, fromToken.toLowerCase(), toToken.toLowerCase(), provider), amount, provider)).route;
 }

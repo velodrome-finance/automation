@@ -9,7 +9,7 @@ import { Provider } from "@ethersproject/providers";
 
 import { RelayToken, RelayInfo, TxData, Route, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../utils/constants";
 import { getClaimCalls } from "./ve";
-import { useQuote } from "./quote";
+import { fetchQuote, getRoutes } from "./quote";
 
 // From a list of Token addresses, filters out Tokens with no balance
 export async function getTokensToCompound(
@@ -65,6 +65,8 @@ export async function getCompounderTxData(
   provider: Provider
 ): Promise<TxData[]> {
   let txData: TxData[] = [];
+  const lpSugar = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
+  const pools = await lpSugar.forSwaps(150, 0); // TODO: Find right value, was using 600, 0
 
   for (let relayInfo of relayInfos) {
     const relay = relayInfo.contract;
@@ -73,13 +75,13 @@ export async function getCompounderTxData(
     // Fetch Relay Rewards
     let calls: string[] = await getClaimCalls(relay, 75);
 
-    const contract = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
-    const pools = await contract.forSwaps(125, 0); // TODO: Find right value, was using 600, 0
     // Swap all Relay Tokens to VELO
     for(let token of relayInfo.tokens) {
+      const quote = (await fetchQuote(getRoutes(pools, token.address.toLowerCase(), jsonConstants.v2.VELO.toLowerCase()), token.balance, provider));
+      if(quote)
         calls.push(
           abi.encodeFunctionData("swapTokenToVELOKeeper", [
-            (await useQuote(pools, token.address, jsonConstants.v2.VELO, token.balance, provider)),
+            (quote.route),
             token.balance,
             1,
           ])
