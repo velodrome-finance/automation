@@ -23,19 +23,13 @@ export async function getTokensToCompound(
   highLiqTokens: string[],
   provider: Provider
 ): Promise<RelayToken[]> {
-  // Get all token balances
-  let tokenBalances: BigNumber[] = [];
+  // Pair all Tokens to be compounded with their balances
+  let relayTokens: RelayToken[] = []
   for(const addr of highLiqTokens) {
-      tokenBalances.push(await (new Contract(addr, erc20Abi, provider).balanceOf(relayAddr)));
+      const tokenBalance: BigNumber = await (new Contract(addr, erc20Abi, provider).balanceOf(relayAddr));
+      if(!tokenBalance.isZero())
+        relayTokens.push({address: addr, balance: tokenBalance} as RelayToken);
   }
-
-  // Pair balances with tokens and filter out zero balances
-  let relayTokens: RelayToken[] = highLiqTokens
-    .map(
-      (token: string, i: number) =>
-        ({ address: token, balance: tokenBalances[i] } as RelayToken)
-    )
-    .filter((token: RelayToken) => !token.balance.isZero());
 
   return relayTokens;
 }
