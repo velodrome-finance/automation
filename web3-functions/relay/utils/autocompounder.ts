@@ -46,15 +46,11 @@ export async function getCompounderRelayInfos(
   highLiqTokens: string[],
   provider: Provider
 ): Promise<RelayInfo[]> {
-  // Fetch all Relays as Contracts from factory
-  const relays: Contract[] = relayAddrs.map(
-    (r: string) => new Contract(r, compAbi, provider)
-  );
-
   // Retrieve tokens to be compounded for each Relay
   let relayInfos: RelayInfo[] = [];
-  for(const relay of relays) {
-      relayInfos.push({contract: relay, tokens: await getTokensToCompound(relay.address, highLiqTokens, provider)} as RelayInfo);
+  for(const addr of relayAddrs) {
+      const relay = new Contract(addr, compAbi, provider);
+      relayInfos.push({contract: relay, tokens: await getTokensToCompound(addr, highLiqTokens, provider)} as RelayInfo);
   }
   return relayInfos;
 }
