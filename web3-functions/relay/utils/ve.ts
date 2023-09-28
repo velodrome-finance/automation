@@ -15,106 +15,62 @@ export async function getClaimCalls(
 ): Promise<string[]> {
   const mTokenId = await relay.mTokenId();
   let calls = [];
+  let rewards = await getRewards(mTokenId, relay.provider, pairsLength);
+
   // Claim Fees
-  let rewards: RewardContractInfo = await fetchFeeRewards(
-    mTokenId,
-    relay.provider,
-    pairsLength
-  );
-  let rewardAddrs: string[] = Object.keys(rewards);
+  let rewardAddrs: string[] = Object.keys(rewards.fee);
   if (rewardAddrs.length != 0)
     calls.push(
       relay.interface.encodeFunctionData("claimFees", [
         rewardAddrs,
-        Object.values(rewards),
+        Object.values(rewards.fee),
       ])
     );
-
   // Claim Bribes
-  rewards = await fetchBribeRewards(mTokenId, relay.provider, pairsLength);
-  rewardAddrs = Object.keys(rewards);
+  rewardAddrs = Object.keys(rewards.bribe);
   if (rewardAddrs.length != 0)
     calls.push(
       relay.interface.encodeFunctionData("claimBribes", [
         rewardAddrs,
-        Object.values(rewards),
+        Object.values(rewards.bribe),
       ])
     );
   return calls;
 }
 
-async function fetchFeeRewards(
+async function getRewards(
   venft: BigNumber,
   provider: Provider,
   pairsLength: number,
   chunkSize = 100
-): Promise<RewardContractInfo> {
+) {
   const lpSugarContract: Contract = new Contract(
     LP_SUGAR_ADDRESS,
     LP_SUGAR_ABI,
     provider
   );
-
-  let rewardInfo: RewardContractInfo = {};
+  let feeRewardInfo: RewardContractInfo = {};
+  let bribeRewardInfo: RewardContractInfo = {};
   for (let startIndex = 0; startIndex < pairsLength; startIndex += chunkSize) {
     const endIndex = Math.min(startIndex + chunkSize, pairsLength);
-    const rewards: Reward[] = (
-      await lpSugarContract.rewards(endIndex - startIndex, startIndex, venft)
-    )
-      .filter((reward) => reward.fee != ZERO_ADDRESS)
-      .map(
-        (reward) =>
-          ({
-            fee: reward.fee,
-            bribe: ZERO_ADDRESS,
-            token: reward.token,
-          } as Reward)
-      );
+    const rewards: Reward[] = await lpSugarContract.rewards(
+      endIndex - startIndex,
+      startIndex,
+      venft
+    );
 
+    // Separate rewards by Bribe and Fees
     for (const reward of rewards) {
-      rewardInfo[reward.fee] = (rewardInfo[reward.fee] || []).concat(
-        reward.token
-      );
+      if (reward.fee != ZERO_ADDRESS)
+        feeRewardInfo[reward.fee] = (feeRewardInfo[reward.fee] || []).concat(
+          reward.token
+        );
+      if (reward.bribe != ZERO_ADDRESS)
+        bribeRewardInfo[reward.bribe] = (
+          bribeRewardInfo[reward.bribe] || []
+        ).concat(reward.token);
     }
   }
 
-  return rewardInfo;
-}
-
-async function fetchBribeRewards(
-  venft: BigNumber,
-  provider: Provider,
-  pairsLength: number,
-  chunkSize = 100
-): Promise<RewardContractInfo> {
-  const lpSugarContract: Contract = new Contract(
-    LP_SUGAR_ADDRESS,
-    LP_SUGAR_ABI,
-    provider
-  );
-
-  let rewardInfo: RewardContractInfo = {};
-  for (let startIndex = 0; startIndex < pairsLength; startIndex += chunkSize) {
-    const endIndex = Math.min(startIndex + chunkSize, pairsLength);
-    const rewards: Reward[] = (
-      await lpSugarContract.rewards(endIndex - startIndex, startIndex, venft)
-    )
-      .filter((reward) => reward.bribe != ZERO_ADDRESS)
-      .map(
-        (reward) =>
-          ({
-            bribe: reward.bribe,
-            fee: ZERO_ADDRESS,
-            token: reward.token,
-          } as Reward)
-      );
-
-    for (const reward of rewards) {
-      rewardInfo[reward.bribe] = (rewardInfo[reward.bribe] || []).concat(
-        reward.token
-      );
-    }
-  }
-
-  return rewardInfo;
+  return { fee: feeRewardInfo, bribe: bribeRewardInfo };
 }
