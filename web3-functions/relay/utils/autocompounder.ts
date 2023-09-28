@@ -6,16 +6,15 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
+import { fetchQuote, getRoutes } from "./quote";
+import { getClaimCalls } from "./ve";
 import {
+  LP_SUGAR_ADDRESS,
+  LP_SUGAR_ABI,
   RelayToken,
   RelayInfo,
   TxData,
-  Route,
-  LP_SUGAR_ADDRESS,
-  LP_SUGAR_ABI,
 } from "../utils/constants";
-import { getClaimCalls } from "./ve";
-import { fetchQuote, getRoutes } from "./quote";
 
 // From a list of Token addresses, filters out Tokens with no balance
 export async function getTokensToCompound(
@@ -101,13 +100,4 @@ export async function getCompounderTxData(
     } as TxData);
   }
   return txData;
-}
-
-export function getRoute(tokenFrom: string, tokenTo: string) {
-  return {
-    from: tokenFrom,
-    to: tokenTo,
-    stable: false,
-    factory: jsonConstants.v2.PoolFactory,
-  } as Route;
 }
