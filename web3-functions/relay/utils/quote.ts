@@ -5,11 +5,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import {
-  ROUTER_ADDRESS,
-  ROUTER_ABI,
-  Route,
-} from "./constants";
+import { ROUTER_ADDRESS, ROUTER_ABI, Route } from "./constants";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -145,11 +141,11 @@ export async function fetchQuote(
       const amountsOut = await router.getAmountsOut(amount, route);
 
       // Ignore bad quotes...
-      if(amountsOut && amountsOut.length >= 1) {
+      if (amountsOut && amountsOut.length >= 1) {
         const amountOut = amountsOut[amountsOut.length - 1];
 
         // Ignore zero quotes...
-        if(!amountOut.isZero())
+        if (!amountOut.isZero())
           quoteChunks.push({ route, amount, amountOut, amountsOut });
       }
     }
