@@ -24,11 +24,10 @@ export async function getTokensToCompound(
   provider: Provider
 ): Promise<RelayToken[]> {
   // Get all token balances
-  let tokenBalances: BigNumber[] = await Promise.all(
-    highLiqTokens.map((addr: string) =>
-      new Contract(addr, erc20Abi, provider).balanceOf(relayAddr)
-    )
-  );
+  let tokenBalances: BigNumber[] = [];
+  for(const addr of highLiqTokens) {
+      tokenBalances.push(await (new Contract(addr, erc20Abi, provider).balanceOf(relayAddr)));
+  }
 
   // Pair balances with tokens and filter out zero balances
   let relayTokens: RelayToken[] = highLiqTokens
@@ -67,7 +66,7 @@ export async function getCompounderTxData(
 ): Promise<TxData[]> {
   let txData: TxData[] = [];
   const lpSugar = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
-  const pools = await lpSugar.forSwaps(150, 0); // TODO: Find right value, was using 600, 0
+  const pools = await lpSugar.forSwaps(340, 0); // TODO: Find right value, was using 600, 0
 
   for (let relayInfo of relayInfos) {
     const relay = relayInfo.contract;
