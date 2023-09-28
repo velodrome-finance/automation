@@ -25,18 +25,19 @@ export function buildGraph(pairs) {
   const graph = new Graph({ multi: true });
   const pairsByAddress = {};
 
-  pairs.forEach((pair) => {
-    const tokenA = pair.token0.toLowerCase();
-    const tokenB = pair.token1.toLowerCase();
-    const pairAddress = pair.lp.toLowerCase();
+  if (!isEmpty(pairs))
+    pairs.forEach((pair) => {
+      const tokenA = pair.token0.toLowerCase();
+      const tokenB = pair.token1.toLowerCase();
+      const pairAddress = pair.lp.toLowerCase();
 
-    // @ts-ignore
-    graph.mergeEdgeWithKey(`direct:${pairAddress}`, tokenA, tokenB);
-    // @ts-ignore
-    graph.mergeEdgeWithKey(`reversed:${pairAddress}`, tokenB, tokenA);
+      // @ts-ignore
+      graph.mergeEdgeWithKey(`direct:${pairAddress}`, tokenA, tokenB);
+      // @ts-ignore
+      graph.mergeEdgeWithKey(`reversed:${pairAddress}`, tokenB, tokenA);
 
-    pairsByAddress[pairAddress] = { ...pair, address: pairAddress };
-  });
+      pairsByAddress[pairAddress] = { ...pair, address: pairAddress };
+    });
 
   return [graph, pairsByAddress];
 }
@@ -63,16 +64,15 @@ export function buildGraph(pairs) {
  *  ]
  */
 export function getRoutes(
-  pairs,
+  graph,
+  pairsByAddress,
   fromToken: string,
   toToken: string,
   maxHops = 2
 ): Route[][] {
-  if (isEmpty(pairs) || !fromToken || !toToken) {
+  if (!fromToken || !toToken) {
     return [];
   }
-
-  const [graph, pairsByAddress] = buildGraph(pairs);
 
   // @ts-ignore
   if (graph?.size < 1) {

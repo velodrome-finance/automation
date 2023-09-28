@@ -6,7 +6,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-import { fetchQuote, getRoutes } from "./quote";
+import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls } from "./ve";
 import {
   LP_SUGAR_ADDRESS,
@@ -62,7 +62,9 @@ export async function getCompounderTxData(
 ): Promise<TxData[]> {
   let txData: TxData[] = [];
   const lpSugar = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
-  const pools = await lpSugar.forSwaps(340, 0); // TODO: Find right value, was using 600, 0
+  const [poolsGraph, poolsByAddress] = buildGraph(
+    await lpSugar.forSwaps(340, 0)
+  ); // TODO: Find right value, was using 600, 0
 
   for (let relayInfo of relayInfos) {
     const relay = relayInfo.contract;
@@ -75,7 +77,8 @@ export async function getCompounderTxData(
     for (let token of relayInfo.tokens) {
       const quote = await fetchQuote(
         getRoutes(
-          pools,
+          poolsGraph,
+          poolsByAddress,
           token.address.toLowerCase(),
           jsonConstants.v2.VELO.toLowerCase()
         ),
