@@ -6,7 +6,15 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { LIBRARY_ABI, LIBRARY_ADDRESS, ROUTER_ABI, ROUTER_ADDRESS, LP_SUGAR_ADDRESS, LP_SUGAR_ABI, Route } from "./constants";
+import {
+  LIBRARY_ABI,
+  LIBRARY_ADDRESS,
+  ROUTER_ABI,
+  ROUTER_ADDRESS,
+  LP_SUGAR_ADDRESS,
+  LP_SUGAR_ABI,
+  Route,
+} from "./constants";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -54,7 +62,12 @@ export function buildGraph(pairs) {
  *    ]
  *  ]
  */
-export function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 2): Route[][] {
+export function getRoutes(
+  pairs,
+  fromToken: string,
+  toToken: string,
+  maxHops = 2
+): Route[][] {
   if (isEmpty(pairs) || !fromToken || !toToken) {
     return [];
   }
@@ -69,12 +82,9 @@ export function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 2
   let graphPaths = [];
 
   try {
-    graphPaths = allSimpleEdgeGroupPaths(
-      graph,
-      fromToken,
-      toToken,
-      { maxDepth: maxHops }
-    );
+    graphPaths = allSimpleEdgeGroupPaths(graph, fromToken, toToken, {
+      maxDepth: maxHops,
+    });
   } catch {
     return [];
   }
@@ -123,36 +133,42 @@ export function getRoutes(pairs, fromToken: string, toToken: string, maxHops = 2
  * if the quoted amount is the same. This should theoretically limit
  * the price impact on a trade.
  */
-export async function fetchQuote(routes: Route[][], amount: BigNumber, provider: Provider, chunkSize = 50) {
+export async function fetchQuote(
+  routes: Route[][],
+  amount: BigNumber,
+  provider: Provider,
+  chunkSize = 50
+) {
   const routeChunks = chunk(routes, chunkSize);
-  let router: Contract = new Contract(ROUTER_ADDRESS,ROUTER_ABI, provider);
+  let router: Contract = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
   amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
 
   // Split into chunks and get the route quotes...
-  let quoteChunks = await Promise.all(routeChunks.map(async (routeChunk: Route[][]) => {
+  let quoteChunks = await Promise.all(
+    routeChunks.map(async (routeChunk: Route[][]) => {
       return Promise.all(
-          routeChunk
-            .map((route) => router.getAmountsOut(amount, route))
+        routeChunk.map((route) => router.getAmountsOut(amount, route))
       ).then((amountChunks) => {
-           return amountChunks.map((amountsOut, cIndex) => {
-               // Ignore bad quotes...
-               // @ts-ignore
-               if (!amountsOut || amountsOut.length < 1) {
-                 return null;
-               }
+        return amountChunks.map((amountsOut, cIndex) => {
+          // Ignore bad quotes...
+          // @ts-ignore
+          if (!amountsOut || amountsOut.length < 1) {
+            return null;
+          }
 
-               // @ts-ignore
-               const amountOut = amountsOut[amountsOut.length - 1];
+          // @ts-ignore
+          const amountOut = amountsOut[amountsOut.length - 1];
 
-               // Ignore zero quotes...
-               // @ts-ignore
-               if (amountOut.isZero()) {
-                 return null;
-               }
-               return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
-           })
+          // Ignore zero quotes...
+          // @ts-ignore
+          if (amountOut.isZero()) {
+            return null;
+          }
+          return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
+        });
       });
-  }));
+    })
+  );
 
   // Filter out bad quotes and find the best one...
   const bestQuote = quoteChunks

@@ -6,8 +6,14 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-
-import { RelayToken, RelayInfo, TxData, Route, LP_SUGAR_ADDRESS, LP_SUGAR_ABI } from "../utils/constants";
+import {
+  RelayToken,
+  RelayInfo,
+  TxData,
+  Route,
+  LP_SUGAR_ADDRESS,
+  LP_SUGAR_ABI,
+} from "../utils/constants";
 import { getClaimCalls } from "./ve";
 import { fetchQuote, getRoutes } from "./quote";
 
@@ -76,12 +82,20 @@ export async function getCompounderTxData(
     let calls: string[] = await getClaimCalls(relay, 75);
 
     // Swap all Relay Tokens to VELO
-    for(let token of relayInfo.tokens) {
-      const quote = (await fetchQuote(getRoutes(pools, token.address.toLowerCase(), jsonConstants.v2.VELO.toLowerCase()), token.balance, provider));
-      if(quote)
+    for (let token of relayInfo.tokens) {
+      const quote = await fetchQuote(
+        getRoutes(
+          pools,
+          token.address.toLowerCase(),
+          jsonConstants.v2.VELO.toLowerCase()
+        ),
+        token.balance,
+        provider
+      );
+      if (quote)
         calls.push(
           abi.encodeFunctionData("swapTokenToVELOKeeper", [
-            (quote.route),
+            quote.route,
             token.balance,
             1,
           ])
