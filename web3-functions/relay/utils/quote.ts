@@ -1,18 +1,13 @@
 import Graph from "graphology";
 import { chunk, isEmpty } from "lodash";
-import { parseUnits } from "@ethersproject/units";
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
 import {
-  LIBRARY_ABI,
-  LIBRARY_ADDRESS,
-  ROUTER_ABI,
   ROUTER_ADDRESS,
-  LP_SUGAR_ADDRESS,
-  LP_SUGAR_ABI,
+  ROUTER_ABI,
   Route,
 } from "./constants";
 
@@ -140,35 +135,25 @@ export async function fetchQuote(
   chunkSize = 50
 ) {
   const routeChunks = chunk(routes, chunkSize);
-  let router: Contract = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
+  const router: Contract = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
   amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
 
+  let quoteChunks = [];
   // Split into chunks and get the route quotes...
-  let quoteChunks = await Promise.all(
-    routeChunks.map(async (routeChunk: Route[][]) => {
-      return Promise.all(
-        routeChunk.map((route) => router.getAmountsOut(amount, route))
-      ).then((amountChunks) => {
-        return amountChunks.map((amountsOut, cIndex) => {
-          // Ignore bad quotes...
-          // @ts-ignore
-          if (!amountsOut || amountsOut.length < 1) {
-            return null;
-          }
+  for (const routeChunk of routeChunks) {
+    for (const route of routeChunk) {
+      const amountsOut = await router.getAmountsOut(amount, route);
 
-          // @ts-ignore
-          const amountOut = amountsOut[amountsOut.length - 1];
+      // Ignore bad quotes...
+      if(amountsOut && amountsOut.length >= 1) {
+        const amountOut = amountsOut[amountsOut.length - 1];
 
-          // Ignore zero quotes...
-          // @ts-ignore
-          if (amountOut.isZero()) {
-            return null;
-          }
-          return { route: routeChunk[cIndex], amount, amountOut, amountsOut };
-        });
-      });
-    })
-  );
+        // Ignore zero quotes...
+        if(!amountOut.isZero())
+          quoteChunks.push({ route, amount, amountOut, amountsOut });
+      }
+    }
+  }
 
   // Filter out bad quotes and find the best one...
   const bestQuote = quoteChunks
@@ -186,41 +171,5 @@ export async function fetchQuote(
     return null;
   }
 
-  return {
-    ...bestQuote,
-    priceImpact: await fetchPriceImpact(bestQuote, provider),
-  };
-}
-
-/**
- * Fetches and calculates the price impact for a quote
- */
-export async function fetchPriceImpact(quote, provider: Provider) {
-  let library = new Contract(LIBRARY_ADDRESS, LIBRARY_ABI, provider);
-
-  const tradeDiffs = await Promise.all(
-    quote.route.map((route: Route, index: number) =>
-      library.functions["getTradeDiff(uint256,address,address,bool,address)"](
-        quote.amountsOut[index],
-        route.from,
-        route.to,
-        route.stable,
-        route.factory
-      )
-    )
-  );
-
-  let totalRatio = parseUnits("1.0");
-
-  tradeDiffs.filter(Boolean).forEach((diff) => {
-    // @ts-ignore
-    if (diff && diff.a.isZero()) {
-      totalRatio = parseUnits("0");
-    } else {
-      // @ts-ignore
-      totalRatio = totalRatio.mul(diff.b).div(diff.a);
-    }
-  });
-
-  return parseUnits("1.0").sub(totalRatio).mul(100);
+  return bestQuote.route;
 }
