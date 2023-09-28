@@ -24,11 +24,15 @@ export async function getTokensToCompound(
   provider: Provider
 ): Promise<RelayToken[]> {
   // Pair all Tokens to be compounded with their balances
-  let relayTokens: RelayToken[] = []
-  for(const addr of highLiqTokens) {
-      const tokenBalance: BigNumber = await (new Contract(addr, erc20Abi, provider).balanceOf(relayAddr));
-      if(!tokenBalance.isZero())
-        relayTokens.push({address: addr, balance: tokenBalance} as RelayToken);
+  let relayTokens: RelayToken[] = [];
+  for (const addr of highLiqTokens) {
+    const tokenBalance: BigNumber = await new Contract(
+      addr,
+      erc20Abi,
+      provider
+    ).balanceOf(relayAddr);
+    if (!tokenBalance.isZero())
+      relayTokens.push({ address: addr, balance: tokenBalance } as RelayToken);
   }
 
   return relayTokens;
@@ -42,9 +46,12 @@ export async function getCompounderRelayInfos(
 ): Promise<RelayInfo[]> {
   // Retrieve tokens to be compounded for each Relay
   let relayInfos: RelayInfo[] = [];
-  for(const addr of relayAddrs) {
-      const relay = new Contract(addr, compAbi, provider);
-      relayInfos.push({contract: relay, tokens: await getTokensToCompound(addr, highLiqTokens, provider)} as RelayInfo);
+  for (const addr of relayAddrs) {
+    const relay = new Contract(addr, compAbi, provider);
+    relayInfos.push({
+      contract: relay,
+      tokens: await getTokensToCompound(addr, highLiqTokens, provider),
+    } as RelayInfo);
   }
   return relayInfos;
 }
