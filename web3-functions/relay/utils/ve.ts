@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import {
   LP_SUGAR_ABI,
   LP_SUGAR_ADDRESS,

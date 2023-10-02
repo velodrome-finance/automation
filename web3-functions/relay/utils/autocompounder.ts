@@ -1,5 +1,5 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { abi as compAbi } from "../../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import jsonConstants from "../../../lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
 import { abi as erc20Abi } from "../abis/erc20.json";
 
 import { BigNumber } from "@ethersproject/bignumber";

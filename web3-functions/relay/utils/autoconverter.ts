@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import { abi as compFactoryAbi } from "../../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
 import { abi as convAbi } from "../../../artifacts/src/autoConverter/AutoConverter.sol/AutoConverter.json";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";

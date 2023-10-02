@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BUSL-1.1
 import Graph from "graphology";
 import { chunk, isEmpty } from "lodash";
 import { BigNumber } from "@ethersproject/bignumber";
