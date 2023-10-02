@@ -89,8 +89,6 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     console.log(`Timestamp is ${timestamp}`);
     let firstDayEnd = timestamp - (timestamp % WEEK) + DAY;
 
-    //TODO: Also check if function has been run in less then a day
-
     // Can only run on First Day of Epoch
     if (firstDayEnd < timestamp)
       return { canExec: false, message: `Not first day` };
@@ -106,6 +104,19 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
       registryAddr,
       provider
     );
+
+    // Also check if function has been run in less then a day
+    for (let compounderInfo of compounderInfos) {
+      let lastRunTimestamp = await compounderInfo.contract.keeperLastRun();
+      if (timestamp - lastRunTimestamp < DAY)
+        return { canExec: false, message: `Already run in last day` };
+    }
+
+    for (let converterInfo of converterInfos) {
+      let lastRunTimestamp = await converterInfo.contract.keeperLastRun();
+      if (timestamp - lastRunTimestamp < DAY)
+        return { canExec: false, message: `Already run in last day` };
+    }
   } catch (err) {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
