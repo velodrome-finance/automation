@@ -106,18 +106,19 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
       provider
     );
 
-    // Also check if function has been run in less then a day
-    for (let compounderInfo of compounderInfos) {
-      let lastRunTimestamp = await compounderInfo.contract.keeperLastRun();
-      if (timestamp - lastRunTimestamp < DAY)
-        return { canExec: false, message: `Already run in last day` };
-    }
+    // TODO: Fix keeper last run
+    // // Also check if function has been run in less then a day
+    // for (let compounderInfo of compounderInfos) {
+    //   let lastRunTimestamp = await compounderInfo.contract.keeperLastRun();
+    //   if (timestamp - lastRunTimestamp < DAY)
+    //     return { canExec: false, message: `Already run in last day` };
+    // }
 
-    for (let converterInfo of converterInfos) {
-      let lastRunTimestamp = await converterInfo.contract.keeperLastRun();
-      if (timestamp - lastRunTimestamp < DAY)
-        return { canExec: false, message: `Already run in last day` };
-    }
+    // for (let converterInfo of converterInfos) {
+    //   let lastRunTimestamp = await converterInfo.contract.keeperLastRun();
+    //   if (timestamp - lastRunTimestamp < DAY)
+    //     return { canExec: false, message: `Already run in last day` };
+    // }
   } catch (err) {
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
@@ -127,14 +128,10 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     compounderInfos,
     provider
   );
-  let converterTxData: TxData[] = await getConverterTxData(
-    converterInfos,
-    provider
-  );
 
   // Return execution call data
   return {
     canExec: true,
-    callData: compounderTxData.concat(converterTxData),
+    callData: compounderTxData,
   };
 });
