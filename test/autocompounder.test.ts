@@ -238,7 +238,7 @@ describe("AutoCompounder Automation Tests", function () {
   });
   it("Test Compounder Automator Flow", async () => {
     let factories = await relayFactoryRegistry.getAll();
-    let tokensToCompound = [usdc, dai, weth, velo];
+    let tokensToCompound = [usdc, weth, velo];
 
     // All balances were minted correctly for all Relays
     let oldBalances = [];

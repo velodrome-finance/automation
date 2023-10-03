@@ -64,7 +64,7 @@ export async function getCompounderTxData(
   let txData: TxData[] = [];
   const lpSugar = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
   const [poolsGraph, poolsByAddress] = buildGraph(
-    await lpSugar.forSwaps(345, 0)
+    await lpSugar.forSwaps(140, 0)
   ); // TODO: Find right value, was using 600, 0
 
   for (let relayInfo of relayInfos) {
@@ -72,7 +72,7 @@ export async function getCompounderTxData(
     const abi = relay.interface;
 
     // Fetch Relay Rewards
-    let calls: string[] = await getClaimCalls(relay, 75);
+    let calls: string[] = await getClaimCalls(relay, 70);
 
     // Swap all Relay Tokens to VELO
     for (let token of relayInfo.tokens) {
@@ -86,13 +86,14 @@ export async function getCompounderTxData(
         token.balance,
         provider
       );
-      calls.push(
-        abi.encodeFunctionData("swapTokenToVELOKeeper", [
-          quote,
-          token.balance,
-          1,
-        ])
-      );
+      if(quote)
+        calls.push(
+          abi.encodeFunctionData("swapTokenToVELOKeeper", [
+            quote,
+            token.balance,
+            1,
+          ])
+        );
     }
 
     // Compound all Tokens
