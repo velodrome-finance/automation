@@ -86,7 +86,7 @@ export async function getCompounderTxData(
         token.balance,
         provider
       );
-      if(quote)
+      if (quote)
         calls.push(
           abi.encodeFunctionData("swapTokenToVELOKeeper", [
             quote,
