@@ -17,6 +17,9 @@ import {
   TxData,
 } from "../utils/constants";
 
+const POOLS_TO_FETCH: number = 145;
+const REWARDS_TO_FETCH: number = 75;
+
 // From a list of Token addresses, filters out Tokens with no balance
 export async function getTokensToCompound(
   relayAddr: string,
@@ -64,7 +67,7 @@ export async function getCompounderTxData(
   let txData: TxData[] = [];
   const lpSugar = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
   const [poolsGraph, poolsByAddress] = buildGraph(
-    await lpSugar.forSwaps(140, 0)
+    await lpSugar.forSwaps(POOLS_TO_FETCH, 0)
   ); // TODO: Find right value, was using 600, 0
 
   for (let relayInfo of relayInfos) {
@@ -72,7 +75,7 @@ export async function getCompounderTxData(
     const abi = relay.interface;
 
     // Fetch Relay Rewards
-    let calls: string[] = await getClaimCalls(relay, 70);
+    let calls: string[] = await getClaimCalls(relay, REWARDS_TO_FETCH);
 
     // Swap all Relay Tokens to VELO
     for (let token of relayInfo.tokens) {
