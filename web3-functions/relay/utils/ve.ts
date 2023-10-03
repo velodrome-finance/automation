@@ -10,6 +10,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 
+// Fetches and claims all available Rewards
 export async function getClaimCalls(
   relay: Contract,
   pairsLength: number
@@ -39,6 +40,7 @@ export async function getClaimCalls(
   return calls;
 }
 
+// Gets Reward information for Fees and Bribes
 async function getRewards(
   venft: BigNumber,
   provider: Provider,
