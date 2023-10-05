@@ -18,7 +18,7 @@ import {
 } from "../utils/constants";
 
 const POOLS_TO_FETCH: number = 145;
-const REWARDS_TO_FETCH: number = 75;
+const REWARDS_TO_FETCH: number = 400;
 
 // From a list of Token addresses, filters out Tokens with no balance
 export async function getTokensToCompound(
