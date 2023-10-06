@@ -76,25 +76,23 @@ async function createAutoCompounder(
   owner: SignerWithAddress
 ) {
   // Impersonating manager
-  const allowedManager = await escrow.allowedManager();
+  let allowedManager = await escrow.allowedManager();
   await setBalance(allowedManager, 100e18);
   await impersonateAccount(allowedManager);
-  const manager = await ethers.getSigner(allowedManager);
+  let manager = await ethers.getSigner(allowedManager);
 
   // Creating Managed Lock
-  const tx = await escrow.populateTransaction.createManagedLockFor(
-    owner.address
-  );
+  let tx = await escrow.populateTransaction.createManagedLockFor(owner.address);
   await manager.sendTransaction({ ...tx, from: allowedManager });
-  const mTokenId = await escrow.tokenId();
+  let mTokenId = await escrow.tokenId();
   await stopImpersonatingAccount(allowedManager);
 
   // Create Normal veNFT and deposit into managed
-  const amount = BigNumber.from(10).pow(18);
+  let amount = BigNumber.from(10).pow(18);
   await velo.approve(escrow.address, amount.mul(10));
   await escrow.createLock(amount, 4 * 365 * 24 * 60 * 60);
-  const token: BigNumber = await escrow.tokenId();
-  const voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
+  let token: BigNumber = await escrow.tokenId();
+  let voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
   await voter.depositManaged(token, mTokenId);
 
   await escrow.approve(autoCompounderFactory.address, mTokenId);
@@ -130,8 +128,8 @@ async function seedRelayWithBalances(
   relayAddr: string,
   storageSlots: StorageList
 ) {
-  for (const key in storageSlots) {
-    const { address, slot } = storageSlots[key];
+  for (let key in storageSlots) {
+    let { address, slot } = storageSlots[key];
     await setBalanceOf(relayAddr, address, slot, 100_000e18);
   }
 }
@@ -178,7 +176,7 @@ describe("AutoCompounder Automation Tests", function () {
   let relays: string[];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
-  const mTokens: BigNumber[] = [];
+  let mTokens: BigNumber[] = [];
   let relayFactoryRegistry: Registry;
 
   before(async function () {
@@ -208,16 +206,16 @@ describe("AutoCompounder Automation Tests", function () {
     );
 
     // Mint VELO to test user
-    const { address: tokenAddr, slot } = storageSlots["velo"];
+    let { address: tokenAddr, slot } = storageSlots["velo"];
     await setBalanceOf(owner.address, tokenAddr, slot, 100_000e18); //TODO: this bal could be smaller
 
     // Setting owner as Keeper
-    const allowedManager = await keeperRegistry.owner();
+    let allowedManager = await keeperRegistry.owner();
     await setBalance(allowedManager, 100e18);
     await impersonateAccount(allowedManager);
-    const manager = await ethers.getSigner(allowedManager);
+    let manager = await ethers.getSigner(allowedManager);
 
-    const tx = await keeperRegistry.populateTransaction.approve(owner.address);
+    let tx = await keeperRegistry.populateTransaction.approve(owner.address);
     await manager.sendTransaction({ ...tx, from: allowedManager });
     await stopImpersonatingAccount(allowedManager);
 
@@ -234,10 +232,10 @@ describe("AutoCompounder Automation Tests", function () {
     }
 
     // Warp to the last timestamp of the First Day
-    const day = 24 * 60 * 60;
-    const timestamp = await time.latest();
-    const endOfFirstDay = timestamp - (timestamp % (7 * day)) + day;
-    const newTimestamp =
+    let day = 24 * 60 * 60;
+    let timestamp = await time.latest();
+    let endOfFirstDay = timestamp - (timestamp % (7 * day)) + day;
+    let newTimestamp =
       endOfFirstDay >= timestamp ? endOfFirstDay : endOfFirstDay + 7 * day;
     time.increaseTo(newTimestamp);
 
@@ -256,11 +254,11 @@ describe("AutoCompounder Automation Tests", function () {
     await lpSugarContract.rewards(mTokens[0], 600, 0);
   });
   it("Test Compounder Automator Flow", async () => {
-    const factories = await relayFactoryRegistry.getAll();
-    const tokensToCompound = [usdc, weth, velo];
+    let factories = await relayFactoryRegistry.getAll();
+    let tokensToCompound = [usdc, weth, velo];
 
     // All balances were minted correctly for all Relays
-    const oldBalances = [];
+    let oldBalances = [];
     for (const i in relays) {
       for (const token of tokensToCompound) {
         expect(await token.balanceOf(relays[i])).closeTo(
@@ -268,7 +266,7 @@ describe("AutoCompounder Automation Tests", function () {
           BigNumber.from(10).pow(17)
         );
       }
-      const oldBal = await escrow.balanceOfNFT(mTokens[i]);
+      let oldBal = await escrow.balanceOfNFT(mTokens[i]);
       expect(oldBal).to.equal(BigNumber.from(10).pow(18));
       oldBalances.push(oldBal);
     }
@@ -280,7 +278,7 @@ describe("AutoCompounder Automation Tests", function () {
 
     expect(result.canExec).to.equal(true);
 
-    for (const call of result.callData) {
+    for (let call of result.callData) {
       await owner.sendTransaction({ to: call.to, data: call.data });
     }
 
