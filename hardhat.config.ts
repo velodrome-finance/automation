@@ -44,10 +44,15 @@ const config: HardhatUserConfig = {
 
   defaultNetwork: "hardhat",
 
+
+  paths: {
+    sources: "./lib/relay-private/src/",
+  },
+
   networks: {
     hardhat: {
       forking: {
-        url: "https://rpc.ankr.com/optimism",
+        url: "https://opt-mainnet.g.alchemy.com/v2/UV9ABpPS4L_YK3WvHGAEePtxGDUixAGD",
         blockNumber: 109516692,
       },
     },

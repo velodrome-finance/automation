@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-import { abi as compAbi } from "../../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
+import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
 import { abi as erc20Abi } from "../abis/erc20.json";
 
 import { BigNumber } from "@ethersproject/bignumber";

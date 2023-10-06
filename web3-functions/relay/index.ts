@@ -12,7 +12,7 @@ import {
   getConverterTxData,
 } from "./utils/autoconverter";
 import { RelayInfo, TxData } from "./utils/constants";
-import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
+import { abi as factoryAbi } from "../../artifacts/lib/relay-private/src/RelayFactory.sol/RelayFactory.json";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 
 import { Contract } from "@ethersproject/contracts";
