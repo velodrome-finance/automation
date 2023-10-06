@@ -11,14 +11,13 @@ import {
   getConverterRelayInfos,
   getConverterTxData,
 } from "./utils/autoconverter";
-import { RelayInfo, TxData } from "./utils/constants";
 import { abi as factoryAbi } from "../../artifacts/lib/relay-private/src/RelayFactory.sol/RelayFactory.json";
+import { RELAY_REGISTRY_ADDRESS, WEEK, DAY, RelayInfo, TxData } from "./utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-import { WEEK, DAY } from "./utils/constants";
 
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
@@ -97,7 +96,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     // Get Registry
     const registryAddr: string =
       (userArgs.registry as string) ??
-      "0x925189766f98B766E64A67E9e70d435CD7F6F819";
+        RELAY_REGISTRY_ADDRESS;
     console.log(`Registry is in address ${registryAddr}`);
 
     // Retrieve all Relay Factories

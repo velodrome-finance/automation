@@ -52,7 +52,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: "https://opt-mainnet.g.alchemy.com/v2/UV9ABpPS4L_YK3WvHGAEePtxGDUixAGD",
-        blockNumber: 109516692,
+        blockNumber: 109858334,
       },
     },
 

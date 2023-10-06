@@ -35,7 +35,7 @@ import { Contract } from "@ethersproject/contracts";
 import { AbiCoder } from "@ethersproject/abi";
 import { Libraries } from "hardhat/types";
 import { BigNumber } from "ethers";
-import { DAY } from "../web3-functions/relay/utils/constants";
+import { DAY, KEEPER_REGISTRY_ADDRESS, RELAY_REGISTRY_ADDRESS } from "../web3-functions/relay/utils/constants";
 const { ethers, deployments, w3f } = hre;
 
 interface BalanceSlot {
@@ -176,11 +176,11 @@ describe("AutoCompounder Automation Tests", function () {
 
     relayFactoryRegistry = await ethers.getContractAt(
       "Registry",
-      "0x925189766f98B766E64A67E9e70d435CD7F6F819"
+      RELAY_REGISTRY_ADDRESS
     );
     keeperRegistry = await ethers.getContractAt(
       "Registry",
-      "0x859f423Dc180C42A2F353796ed4A1591a46c3f69"
+      KEEPER_REGISTRY_ADDRESS
     );
     const factories: string[] = await relayFactoryRegistry.getAll();
     const autoCompounderFactory: AutoCompounderFactory =
