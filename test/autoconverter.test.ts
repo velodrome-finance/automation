@@ -291,12 +291,6 @@ describe("AutoConverter Automation Tests", function () {
       expect(await usdc.balanceOf(relays[i])).to.above(oldBal);
     }
   });
-  it("Cannot execute if after first day of script", async () => {
-    time.increase(1);
-    let { result } = await relayW3f.run();
-    expect(result.canExec).to.equal(false);
-  });
-
   it("Cannot execute twice in a day", async () => {
     await relayW3f.run();
     time.increase(DAY - 1);

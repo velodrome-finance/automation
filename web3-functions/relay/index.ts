@@ -86,11 +86,6 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
     console.log(`Timestamp is ${timestamp}`);
-    let firstDayEnd = timestamp - (timestamp % WEEK) + DAY;
-
-    // Can only run on First Day of Epoch
-    if (firstDayEnd < timestamp)
-      return { canExec: false, message: `Not first day` };
 
     // Retrieve all Relay Factories
     [compounderInfos, converterInfos] = await getRelayInfos(
