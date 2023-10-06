@@ -7,7 +7,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
-import { getClaimCalls } from "./ve";
+import { getClaimCalls } from "./rewards";
 import {
   LP_SUGAR_ADDRESS,
   LP_SUGAR_ABI,
