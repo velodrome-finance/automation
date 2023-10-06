@@ -44,7 +44,6 @@ const config: HardhatUserConfig = {
 
   defaultNetwork: "hardhat",
 
-
   paths: {
     sources: "./lib/relay-private/src/",
   },
