@@ -11,7 +11,6 @@ import {
   getConverterRelayInfos,
   getConverterTxData,
 } from "./utils/autoconverter";
-import { abi as factoryAbi } from "../../artifacts/lib/relay-private/src/RelayFactory.sol/RelayFactory.json";
 import { RELAY_REGISTRY_ADDRESS, WEEK, DAY, RelayInfo, TxData } from "./utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 
@@ -31,7 +30,7 @@ async function getFactoriesFromRegistry(
   );
 
   return (await relayFactoryRegistry.getAll()).map(
-    (f: string) => new Contract(f, factoryAbi, provider)
+    (f: string) => new Contract(f, ["function relays() view returns (address[] memory)"], provider)
   );
 }
 

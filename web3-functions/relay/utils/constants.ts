@@ -1,21 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
-import { constants, utils } from "ethers";
+import { constants } from "ethers";
 import { Contract } from "@ethersproject/contracts";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import lp_sugar_abi from "../../relay/abis/lp_sugar.json";
-import ve_sugar_abi from "../../relay/abis/ve_sugar.json";
-import library_abi from "../../relay/abis/library.json";
-import router_abi from "../../relay/abis/router.json";
 
 export const DAY = 24 * 60 * 60;
 export const WEEK = 7 * DAY;
 
 export const ZERO_ADDRESS = constants.AddressZero;
 export const LP_SUGAR_ABI = lp_sugar_abi;
-export const VE_SUGAR_ABI = ve_sugar_abi;
-export const LIBRARY_ABI = library_abi;
-export const ROUTER_ABI = router_abi;
 
 export const KEEPER_REGISTRY_ADDRESS = "0x65B3Cbd38c3c310A177d27912d002E77d1684a6C";
 export const RELAY_REGISTRY_ADDRESS = "0xBC3dc970f891ffdd3049FA3a649985CC6626d486";

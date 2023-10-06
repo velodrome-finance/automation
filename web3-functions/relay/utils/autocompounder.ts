@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { abi as erc20Abi } from "../abis/erc20.json";
 
 import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
@@ -31,7 +30,7 @@ export async function getTokensToCompound(
   for (const addr of highLiqTokens) {
     const tokenBalance: BigNumber = await new Contract(
       addr,
-      erc20Abi,
+      ["function balanceOf(address) view returns (uint256)"],
       provider
     ).balanceOf(relayAddr);
     if (!tokenBalance.isZero())
