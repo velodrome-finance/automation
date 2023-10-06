@@ -77,7 +77,7 @@ async function getRelayInfos(
 }
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
-  const { userArgs, multiChainProvider } = context;
+  const { multiChainProvider } = context;
   const provider = multiChainProvider.default();
 
   let compounderInfos: RelayInfo[] = [];
@@ -92,15 +92,9 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     if (firstDayEnd < timestamp)
       return { canExec: false, message: `Not first day` };
 
-    // Get Registry
-    const registryAddr: string =
-      (userArgs.registry as string) ??
-        RELAY_REGISTRY_ADDRESS;
-    console.log(`Registry is in address ${registryAddr}`);
-
     // Retrieve all Relay Factories
     [compounderInfos, converterInfos] = await getRelayInfos(
-      registryAddr,
+      RELAY_REGISTRY_ADDRESS,
       provider
     );
 
