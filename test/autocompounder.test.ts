@@ -13,6 +13,7 @@ import {
   setCode,
 } from "@nomicfoundation/hardhat-network-helpers";
 import {
+  Web3FunctionExecSuccess,
   Web3FunctionUserArgs,
   Web3FunctionResultV2,
 } from "@gelatonetwork/web3-functions-sdk";
@@ -30,12 +31,13 @@ import { IVotingEscrow } from "../typechain/lib/contracts/contracts/interfaces/I
 import { ERC20 } from "../typechain/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20";
 import { IVoter } from "../typechain/lib/contracts/contracts/interfaces/IVoter";
 import { abi as erc20Abi } from "../web3-functions/relay/abis/erc20.json";
+import lpSugarAbi from "../web3-functions/relay/abis/lp_sugar.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { AbiCoder } from "@ethersproject/abi";
 import { Libraries } from "hardhat/types";
 import { BigNumber } from "ethers";
-import { DAY } from "../web3-functions/relay/utils/constants";
+import { DAY, LP_SUGAR_ADDRESS } from "../web3-functions/relay/utils/constants";
 const { ethers, deployments, w3f } = hre;
 
 interface BalanceSlot {
@@ -74,23 +76,25 @@ async function createAutoCompounder(
   owner: SignerWithAddress
 ) {
   // Impersonating manager
-  let allowedManager = await escrow.allowedManager();
+  const allowedManager = await escrow.allowedManager();
   await setBalance(allowedManager, 100e18);
   await impersonateAccount(allowedManager);
-  let manager = await ethers.getSigner(allowedManager);
+  const manager = await ethers.getSigner(allowedManager);
 
   // Creating Managed Lock
-  let tx = await escrow.populateTransaction.createManagedLockFor(owner.address);
+  const tx = await escrow.populateTransaction.createManagedLockFor(
+    owner.address
+  );
   await manager.sendTransaction({ ...tx, from: allowedManager });
-  let mTokenId = await escrow.tokenId();
+  const mTokenId = await escrow.tokenId();
   await stopImpersonatingAccount(allowedManager);
 
   // Create Normal veNFT and deposit into managed
-  let amount = BigNumber.from(10).pow(18);
+  const amount = BigNumber.from(10).pow(18);
   await velo.approve(escrow.address, amount.mul(10));
   await escrow.createLock(amount, 4 * 365 * 24 * 60 * 60);
-  let token: BigNumber = await escrow.tokenId();
-  let voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
+  const token: BigNumber = await escrow.tokenId();
+  const voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
   await voter.depositManaged(token, mTokenId);
 
   await escrow.approve(autoCompounderFactory.address, mTokenId);
@@ -126,8 +130,8 @@ async function seedRelayWithBalances(
   relayAddr: string,
   storageSlots: StorageList
 ) {
-  for (let key in storageSlots) {
-    let { address, slot } = storageSlots[key];
+  for (const key in storageSlots) {
+    const { address, slot } = storageSlots[key];
     await setBalanceOf(relayAddr, address, slot, 100_000e18);
   }
 }
@@ -155,6 +159,13 @@ export async function deploy<Type>(
   return ctr;
 }
 
+function logW3fRunStats(run: Web3FunctionExecSuccess) {
+  const duration = run.duration.toFixed(2);
+  const memory = run.memory.toFixed(2);
+  const rpc = run.rpcCalls.total;
+  console.log(`W3F run stats: ${duration}s / ${memory}mb / ${rpc} rpc calls`);
+}
+
 describe("AutoCompounder Automation Tests", function () {
   let userArgs: Web3FunctionUserArgs;
   let relayW3f: Web3FunctionHardhat;
@@ -167,7 +178,7 @@ describe("AutoCompounder Automation Tests", function () {
   let relays: string[];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
-  let mTokens: BigNumber[] = [];
+  const mTokens: BigNumber[] = [];
   let relayFactoryRegistry: Registry;
 
   before(async function () {
@@ -197,16 +208,16 @@ describe("AutoCompounder Automation Tests", function () {
     );
 
     // Mint VELO to test user
-    let { address: tokenAddr, slot } = storageSlots["velo"];
+    const { address: tokenAddr, slot } = storageSlots["velo"];
     await setBalanceOf(owner.address, tokenAddr, slot, 100_000e18); //TODO: this bal could be smaller
 
     // Setting owner as Keeper
-    let allowedManager = await keeperRegistry.owner();
+    const allowedManager = await keeperRegistry.owner();
     await setBalance(allowedManager, 100e18);
     await impersonateAccount(allowedManager);
-    let manager = await ethers.getSigner(allowedManager);
+    const manager = await ethers.getSigner(allowedManager);
 
-    let tx = await keeperRegistry.populateTransaction.approve(owner.address);
+    const tx = await keeperRegistry.populateTransaction.approve(owner.address);
     await manager.sendTransaction({ ...tx, from: allowedManager });
     await stopImpersonatingAccount(allowedManager);
 
@@ -223,10 +234,10 @@ describe("AutoCompounder Automation Tests", function () {
     }
 
     // Warp to the last timestamp of the First Day
-    let day = 24 * 60 * 60;
-    let timestamp = await time.latest();
-    let endOfFirstDay = timestamp - (timestamp % (7 * day)) + day;
-    let newTimestamp =
+    const day = 24 * 60 * 60;
+    const timestamp = await time.latest();
+    const endOfFirstDay = timestamp - (timestamp % (7 * day)) + day;
+    const newTimestamp =
       endOfFirstDay >= timestamp ? endOfFirstDay : endOfFirstDay + 7 * day;
     time.increaseTo(newTimestamp);
 
@@ -235,13 +246,21 @@ describe("AutoCompounder Automation Tests", function () {
     userArgs = {
       registry: relayFactoryRegistry.address,
     };
+
+    // Warm up hardhat cache for lpSugar calls
+    const lpSugarContract = await ethers.getContractAt(
+      lpSugarAbi,
+      LP_SUGAR_ADDRESS
+    );
+    await lpSugarContract.forSwaps(600, 0);
+    await lpSugarContract.rewards(mTokens[0], 600, 0);
   });
   it("Test Compounder Automator Flow", async () => {
-    let factories = await relayFactoryRegistry.getAll();
-    let tokensToCompound = [usdc, weth, velo];
+    const factories = await relayFactoryRegistry.getAll();
+    const tokensToCompound = [usdc, weth, velo];
 
     // All balances were minted correctly for all Relays
-    let oldBalances = [];
+    const oldBalances = [];
     for (const i in relays) {
       for (const token of tokensToCompound) {
         expect(await token.balanceOf(relays[i])).closeTo(
@@ -249,17 +268,19 @@ describe("AutoCompounder Automation Tests", function () {
           BigNumber.from(10).pow(17)
         );
       }
-      let oldBal = await escrow.balanceOfNFT(mTokens[i]);
+      const oldBal = await escrow.balanceOfNFT(mTokens[i]);
       expect(oldBal).to.equal(BigNumber.from(10).pow(18));
       oldBalances.push(oldBal);
     }
 
     // Run script and send its transactions
-    let { result } = await relayW3f.run();
-    result = result as Web3FunctionResultV2;
+    const run = await relayW3f.run();
+    const result = run.result as Web3FunctionResultV2;
+    logW3fRunStats(run);
+
     expect(result.canExec).to.equal(true);
 
-    for (let call of result.callData) {
+    for (const call of result.callData) {
       await owner.sendTransaction({ to: call.to, data: call.data });
     }
 
@@ -273,13 +294,17 @@ describe("AutoCompounder Automation Tests", function () {
   });
   it("Cannot execute if after first day of script", async () => {
     time.increase(1);
-    let { result } = await relayW3f.run();
+    const run = await relayW3f.run();
+    const result = run.result as Web3FunctionResultV2;
+    logW3fRunStats(run);
     expect(result.canExec).to.equal(false);
   });
   it("Cannot execute twice in a day", async () => {
     await relayW3f.run();
     time.increase(DAY - 1);
-    let { result } = await relayW3f.run();
+    const run = await relayW3f.run();
+    const result = run.result as Web3FunctionResultV2;
+    logW3fRunStats(run);
     expect(result.canExec).to.equal(false);
   });
 });
