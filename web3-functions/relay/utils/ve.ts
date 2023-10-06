@@ -89,3 +89,38 @@ async function getRewards(
   await Promise.all(promises);
   return { fee: feeRewardInfo, bribe: bribeRewardInfo };
 }
+
+// Gets All pools
+export async function getPools(
+  provider: Provider,
+  poolsLength: number,
+  chunkSize = 100
+) {
+  const lpSugarContract: Contract = new Contract(
+    LP_SUGAR_ADDRESS,
+    LP_SUGAR_ABI,
+    provider
+  );
+  const allPools: any[] = [];
+  const promises: Promise<void>[] = [];
+  for (let startIndex = 0; startIndex < poolsLength; startIndex += chunkSize) {
+    const endIndex = Math.min(startIndex + chunkSize, poolsLength);
+    promises.push(
+      // eslint-disable-next-line no-async-promise-executor
+      new Promise(async (resolve, reject) => {
+        try {
+          const pools: any[] = await lpSugarContract.forSwaps(
+            endIndex - startIndex,
+            startIndex
+          );
+          allPools.push(...pools);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      })
+    );
+  }
+  await Promise.all(promises);
+  return allPools;
+}
