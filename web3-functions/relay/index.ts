@@ -3,6 +3,9 @@ import {
   Web3Function,
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
+import { Contract } from "@ethersproject/contracts";
+import { Provider } from "@ethersproject/providers";
+
 import {
   getCompounderTxData,
   getCompounderRelayInfos,
@@ -13,9 +16,6 @@ import {
 } from "./utils/autoconverter";
 import { TxData, RelayInfo, RELAY_REGISTRY_ADDRESS } from "./utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
-
-import { Contract } from "@ethersproject/contracts";
-import { Provider } from "@ethersproject/providers";
 
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
