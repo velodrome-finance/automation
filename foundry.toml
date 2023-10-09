@@ -6,7 +6,9 @@ libs = ["lib"]
 remappings = [
     "forge-std/=lib/forge-std/src/",
     "@openzeppelin/=lib/openzeppelin-contracts/",
-    "@velodrome/=lib/contracts/"
+    "@velodrome/=lib/relay-private/lib/contracts/"
 ]
 
 fs_permissions = [{ access = "read-write", path = "./"}]
+
+solc-version = "0.8.19" 
