@@ -3,22 +3,19 @@ import {
   Web3Function,
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
-import {
-  getCompounderRelayInfos,
-  getCompounderTxData,
-} from "./utils/autocompounder";
-import {
-  getConverterRelayInfos,
-  getConverterTxData,
-} from "./utils/autoconverter";
-import { RelayInfo, TxData } from "./utils/constants";
-import { abi as factoryAbi } from "../../artifacts/src/RelayFactory.sol/RelayFactory.json";
-import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
-
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
-import { WEEK, DAY } from "./utils/constants";
+import {
+  getCompounderTxData,
+  getCompounderRelayInfos,
+} from "./utils/autocompounder";
+import {
+  getConverterTxData,
+  getConverterRelayInfos,
+} from "./utils/autoconverter";
+import { TxData, RelayInfo, RELAY_REGISTRY_ADDRESS } from "./utils/constants";
+import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
@@ -32,7 +29,12 @@ async function getFactoriesFromRegistry(
   );
 
   return (await relayFactoryRegistry.getAll()).map(
-    (f: string) => new Contract(f, factoryAbi, provider)
+    (f: string) =>
+      new Contract(
+        f,
+        ["function relays() view returns (address[] memory)"],
+        provider
+      )
   );
 }
 
@@ -79,7 +81,7 @@ async function getRelayInfos(
 }
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
-  const { userArgs, multiChainProvider } = context;
+  const { multiChainProvider } = context;
   const provider = multiChainProvider.default();
 
   let compounderInfos: RelayInfo[] = [];
@@ -88,21 +90,10 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
     console.log(`Timestamp is ${timestamp}`);
-    let firstDayEnd = timestamp - (timestamp % WEEK) + DAY;
-
-    // Can only run on First Day of Epoch
-    if (firstDayEnd < timestamp)
-      return { canExec: false, message: `Not first day` };
-
-    // Get Registry
-    const registryAddr: string =
-      (userArgs.registry as string) ??
-      "0x925189766f98B766E64A67E9e70d435CD7F6F819";
-    console.log(`Registry is in address ${registryAddr}`);
 
     // Retrieve all Relay Factories
     [compounderInfos, converterInfos] = await getRelayInfos(
-      registryAddr,
+      RELAY_REGISTRY_ADDRESS,
       provider
     );
 

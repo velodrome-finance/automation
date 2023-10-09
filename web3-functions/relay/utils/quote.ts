@@ -6,7 +6,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { ROUTER_ADDRESS, ROUTER_ABI, Route } from "./constants";
+import { ROUTER_ADDRESS, Route } from "./constants";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -132,7 +132,13 @@ export async function fetchQuote(
   chunkSize = 50
 ) {
   const routeChunks = chunk(routes, chunkSize);
-  const router: Contract = new Contract(ROUTER_ADDRESS, ROUTER_ABI, provider);
+  const router: Contract = new Contract(
+    ROUTER_ADDRESS,
+    [
+      "function getAmountsOut(uint256,tuple(address from, address to, bool stable, address factory)[]) public view returns (uint256[] memory)",
+    ],
+    provider
+  );
   amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
 
   let quoteChunks = [];

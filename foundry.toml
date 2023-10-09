@@ -1,5 +1,5 @@
 [profile.default]
-src = "src"
+src = "./lib/relay-private/src/"
 out = "out"
 libs = ["lib"]
 

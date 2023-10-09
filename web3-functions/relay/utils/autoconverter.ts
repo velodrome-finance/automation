@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
-import { abi as compFactoryAbi } from "../../../artifacts/src/autoCompounder/AutoCompounderFactory.sol/AutoCompounderFactory.json";
-import { abi as convAbi } from "../../../artifacts/src/autoConverter/AutoConverter.sol/AutoConverter.json";
-import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
-import { abi as erc20Abi } from "../abis/erc20.json";
-
-import { BigNumber } from "@ethersproject/bignumber";
-import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
+import { Contract } from "@ethersproject/contracts";
+import { BigNumber } from "@ethersproject/bignumber";
 
+import { abi as convAbi } from "../../../artifacts/lib/relay-private/src/autoConverter/AutoConverter.sol/AutoConverter.json";
+import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
 import { RelayInfo, RelayToken, TxData, Route } from "../utils/constants";
 
 // From a list of Token addresses, filters out Tokens with no balance
@@ -19,7 +16,11 @@ export async function getTokensToConvert(
   // Get all token balances
   let tokenBalances: BigNumber[] = await Promise.all(
     highLiqTokens.map((addr: string) =>
-      new Contract(addr, erc20Abi, provider).balanceOf(relayAddr)
+      new Contract(
+        addr,
+        ["function balanceOf(address) view returns (uint256)"],
+        provider
+      ).balanceOf(relayAddr)
     )
   );
 
@@ -52,7 +53,7 @@ export async function getConverterRelayInfos(
   // TODO: Fix getting tokens to swap
   let compounderFactory: Contract = new Contract(
     "0xd4C6eDDBE963aFA2D7b1562d0F2F3F9462E6525b",
-    compFactoryAbi,
+    ["function highLiquidityTokens() external view returns (address[] memory)"],
     provider
   );
   // Fetch all High Liquidity Tokens

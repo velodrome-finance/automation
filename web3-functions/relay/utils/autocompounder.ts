@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
-import { abi as compAbi } from "../../../artifacts/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { abi as erc20Abi } from "../abis/erc20.json";
-
-import { BigNumber } from "@ethersproject/bignumber";
-import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
+import { Contract } from "@ethersproject/contracts";
+import { BigNumber } from "@ethersproject/bignumber";
 
+import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
+import { RelayToken, RelayInfo, TxData, VELO } from "../utils/constants";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
-import { getClaimCalls, getPools } from "./ve";
-import {
-  LP_SUGAR_ADDRESS,
-  LP_SUGAR_ABI,
-  VELO,
-  RelayToken,
-  RelayInfo,
-  TxData,
-} from "../utils/constants";
+import { getClaimCalls, getPools } from "./rewards";
 
 const POOLS_TO_FETCH = 300;
 const REWARDS_TO_FETCH = 150;
@@ -31,7 +22,7 @@ export async function getTokensToCompound(
   for (const addr of highLiqTokens) {
     const tokenBalance: BigNumber = await new Contract(
       addr,
-      erc20Abi,
+      ["function balanceOf(address) view returns (uint256)"],
       provider
     ).balanceOf(relayAddr);
     if (!tokenBalance.isZero())

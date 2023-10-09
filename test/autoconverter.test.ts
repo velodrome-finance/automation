@@ -1,40 +1,44 @@
 import hre from "hardhat";
-import { before } from "mocha";
 import { expect } from "chai";
+import { before } from "mocha";
+import { BigNumber } from "ethers";
+const { ethers, deployments, w3f } = hre;
+
+import { Libraries } from "hardhat/types";
+import { hexZeroPad } from "ethers/lib/utils";
+import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Registry } from "../typechain/src/relay/";
+import { Web3FunctionHardhat } from "@gelatonetwork/web3-functions-sdk/hardhat-plugin";
 
 import {
-  impersonateAccount,
-  stopImpersonatingAccount,
+  time,
   setBalance,
   setStorageAt,
-  time,
-  setCode,
+  impersonateAccount,
+  stopImpersonatingAccount,
 } from "@nomicfoundation/hardhat-network-helpers";
 import {
   Web3FunctionUserArgs,
   Web3FunctionResultV2,
 } from "@gelatonetwork/web3-functions-sdk";
-import { Web3FunctionHardhat } from "@gelatonetwork/web3-functions-sdk/hardhat-plugin";
 
 import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
+import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVotingEscrow";
+import { IVoter } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVoter";
+import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
+import { abi as erc20Abi } from "../web3-functions/relay/abis/erc20.json";
+import { Registry } from "../typechain/relay-private/src";
 
 import {
   AutoConverter,
   AutoConverterFactory,
-} from "../typechain/src/autoConverter/";
-import { IVotingEscrow } from "../typechain/lib/contracts/contracts/interfaces/IVotingEscrow";
-import { ERC20 } from "../typechain/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20";
-import { IVoter } from "../typechain/lib/contracts/contracts/interfaces/IVoter";
-import { abi as erc20Abi } from "../web3-functions/relay/abis/erc20.json";
+} from "../typechain/relay-private/src/autoConverter";
 
-import { Contract } from "@ethersproject/contracts";
-import { Libraries } from "hardhat/types";
-import { BigNumber } from "ethers";
-import { DAY } from "../web3-functions/relay/utils/constants";
-import { hexZeroPad } from "ethers/lib/utils";
-const { ethers, deployments, w3f } = hre;
+import {
+  KEEPER_REGISTRY_ADDRESS,
+  RELAY_REGISTRY_ADDRESS,
+  DAY,
+} from "../web3-functions/relay/utils/constants";
 
 interface BalanceSlot {
   address: string;
@@ -163,11 +167,11 @@ describe("AutoConverter Automation Tests", function () {
   let relayW3f: Web3FunctionHardhat;
   let owner: SignerWithAddress;
 
-  let dai: ERC20;
-  let usdc: ERC20;
-  let frax: ERC20;
-  let weth: ERC20;
-  let velo: ERC20;
+  let dai: IERC20;
+  let usdc: IERC20;
+  let frax: IERC20;
+  let weth: IERC20;
+  let velo: IERC20;
   let relays: string[];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
@@ -181,11 +185,11 @@ describe("AutoConverter Automation Tests", function () {
 
     relayFactoryRegistry = await ethers.getContractAt(
       "Registry",
-      "0x925189766f98B766E64A67E9e70d435CD7F6F819"
+      RELAY_REGISTRY_ADDRESS
     );
     keeperRegistry = await ethers.getContractAt(
       "Registry",
-      "0x859f423Dc180C42A2F353796ed4A1591a46c3f69"
+      KEEPER_REGISTRY_ADDRESS
     );
     const factories: string[] = await relayFactoryRegistry.getAll();
     const autoConverterFactory: AutoConverterFactory =
@@ -291,12 +295,6 @@ describe("AutoConverter Automation Tests", function () {
       expect(await usdc.balanceOf(relays[i])).to.above(oldBal);
     }
   });
-  it("Cannot execute if after first day of script", async () => {
-    time.increase(1);
-    let { result } = await relayW3f.run();
-    expect(result.canExec).to.equal(false);
-  });
-
   it("Cannot execute twice in a day", async () => {
     await relayW3f.run();
     time.increase(DAY - 1);
