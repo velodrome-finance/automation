@@ -6,18 +6,16 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
-import { getClaimCalls } from "./rewards";
+import { getClaimCalls, getPools } from "./rewards";
 import {
-  LP_SUGAR_ADDRESS,
-  LP_SUGAR_ABI,
-  VELO,
   RelayToken,
   RelayInfo,
   TxData,
+  VELO,
 } from "../utils/constants";
 
-const POOLS_TO_FETCH: number = 145;
-const REWARDS_TO_FETCH: number = 75;
+const POOLS_TO_FETCH = 300;
+const REWARDS_TO_FETCH = 150;
 
 // From a list of Token addresses, filters out Tokens with no balance
 export async function getTokensToCompound(
@@ -64,10 +62,9 @@ export async function getCompounderTxData(
   provider: Provider
 ): Promise<TxData[]> {
   let txData: TxData[] = [];
-  const lpSugar = new Contract(LP_SUGAR_ADDRESS, LP_SUGAR_ABI, provider);
   const [poolsGraph, poolsByAddress] = buildGraph(
-    await lpSugar.forSwaps(POOLS_TO_FETCH, 0)
-  ); // TODO: Find right value, was using 600, 0
+    await getPools(provider, POOLS_TO_FETCH)
+  );
 
   for (let relayInfo of relayInfos) {
     const relay = relayInfo.contract;

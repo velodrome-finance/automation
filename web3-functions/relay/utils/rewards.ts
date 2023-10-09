@@ -52,28 +52,75 @@ async function getRewards(
     LP_SUGAR_ABI,
     provider
   );
-  let feeRewardInfo: RewardContractInfo = {};
-  let bribeRewardInfo: RewardContractInfo = {};
+  const feeRewardInfo: RewardContractInfo = {};
+  const bribeRewardInfo: RewardContractInfo = {};
+
+  const promises: Promise<void>[] = [];
   for (let startIndex = 0; startIndex < pairsLength; startIndex += chunkSize) {
     const endIndex = Math.min(startIndex + chunkSize, pairsLength);
-    const rewards: Reward[] = await lpSugarContract.rewards(
-      endIndex - startIndex,
-      startIndex,
-      venft
+    promises.push(
+      // eslint-disable-next-line no-async-promise-executor
+      new Promise(async (resolve, reject) => {
+        try {
+          const rewards: Reward[] = await lpSugarContract.rewards(
+            endIndex - startIndex,
+            startIndex,
+            venft
+          );
+
+          // Separate rewards by Bribe and Fees
+          for (const reward of rewards) {
+            if (reward.fee != ZERO_ADDRESS)
+              feeRewardInfo[reward.fee] = (
+                feeRewardInfo[reward.fee] || []
+              ).concat(reward.token);
+            if (reward.bribe != ZERO_ADDRESS)
+              bribeRewardInfo[reward.bribe] = (
+                bribeRewardInfo[reward.bribe] || []
+              ).concat(reward.token);
+          }
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      })
     );
-
-    // Separate rewards by Bribe and Fees
-    for (const reward of rewards) {
-      if (reward.fee != ZERO_ADDRESS)
-        feeRewardInfo[reward.fee] = (feeRewardInfo[reward.fee] || []).concat(
-          reward.token
-        );
-      if (reward.bribe != ZERO_ADDRESS)
-        bribeRewardInfo[reward.bribe] = (
-          bribeRewardInfo[reward.bribe] || []
-        ).concat(reward.token);
-    }
   }
-
+  await Promise.all(promises);
   return { fee: feeRewardInfo, bribe: bribeRewardInfo };
+}
+
+// Gets All pools
+export async function getPools(
+  provider: Provider,
+  poolsLength: number,
+  chunkSize = 100
+) {
+  const lpSugarContract: Contract = new Contract(
+    LP_SUGAR_ADDRESS,
+    LP_SUGAR_ABI,
+    provider
+  );
+  const allPools: any[] = [];
+  const promises: Promise<void>[] = [];
+  for (let startIndex = 0; startIndex < poolsLength; startIndex += chunkSize) {
+    const endIndex = Math.min(startIndex + chunkSize, poolsLength);
+    promises.push(
+      // eslint-disable-next-line no-async-promise-executor
+      new Promise(async (resolve, reject) => {
+        try {
+          const pools: any[] = await lpSugarContract.forSwaps(
+            endIndex - startIndex,
+            startIndex
+          );
+          allPools.push(...pools);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      })
+    );
+  }
+  await Promise.all(promises);
+  return allPools;
 }

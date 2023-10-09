@@ -13,6 +13,7 @@ import {
   setCode,
 } from "@nomicfoundation/hardhat-network-helpers";
 import {
+  Web3FunctionExecSuccess,
   Web3FunctionUserArgs,
   Web3FunctionResultV2,
 } from "@gelatonetwork/web3-functions-sdk";
@@ -30,12 +31,13 @@ import { IVotingEscrow } from "../typechain/lib/contracts/contracts/interfaces/I
 import { ERC20 } from "../typechain/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20";
 import { IVoter } from "../typechain/lib/contracts/contracts/interfaces/IVoter";
 import { abi as erc20Abi } from "../web3-functions/relay/abis/erc20.json";
+import lpSugarAbi from "../web3-functions/relay/abis/lp_sugar.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { AbiCoder } from "@ethersproject/abi";
 import { Libraries } from "hardhat/types";
 import { BigNumber } from "ethers";
-import { DAY, KEEPER_REGISTRY_ADDRESS, RELAY_REGISTRY_ADDRESS } from "../web3-functions/relay/utils/constants";
+import { DAY, LP_SUGAR_ADDRESS, KEEPER_REGISTRY_ADDRESS, RELAY_REGISTRY_ADDRESS } from "../web3-functions/relay/utils/constants";
 const { ethers, deployments, w3f } = hre;
 
 interface BalanceSlot {
@@ -155,6 +157,13 @@ export async function deploy<Type>(
   return ctr;
 }
 
+function logW3fRunStats(run: Web3FunctionExecSuccess) {
+  const duration = run.duration.toFixed(2);
+  const memory = run.memory.toFixed(2);
+  const rpc = run.rpcCalls.total;
+  console.log(`W3F run stats: ${duration}s / ${memory}mb / ${rpc} rpc calls`);
+}
+
 describe("AutoCompounder Automation Tests", function () {
   let userArgs: Web3FunctionUserArgs;
   let relayW3f: Web3FunctionHardhat;
@@ -235,6 +244,14 @@ describe("AutoCompounder Automation Tests", function () {
     userArgs = {
       registry: relayFactoryRegistry.address,
     };
+
+    // Warm up hardhat cache for lpSugar calls
+    const lpSugarContract = await ethers.getContractAt(
+      lpSugarAbi,
+      LP_SUGAR_ADDRESS
+    );
+    await lpSugarContract.forSwaps(600, 0);
+    await lpSugarContract.rewards(mTokens[0], 600, 0);
   });
   it("Test Compounder Automator Flow", async () => {
     let factories = await relayFactoryRegistry.getAll();
@@ -255,8 +272,10 @@ describe("AutoCompounder Automation Tests", function () {
     }
 
     // Run script and send its transactions
-    let { result } = await relayW3f.run();
-    result = result as Web3FunctionResultV2;
+    const run = await relayW3f.run();
+    const result = run.result as Web3FunctionResultV2;
+    logW3fRunStats(run);
+
     expect(result.canExec).to.equal(true);
 
     for (let call of result.callData) {
@@ -274,7 +293,9 @@ describe("AutoCompounder Automation Tests", function () {
   it("Cannot execute twice in a day", async () => {
     await relayW3f.run();
     time.increase(DAY - 1);
-    let { result } = await relayW3f.run();
+    const run = await relayW3f.run();
+    const result = run.result as Web3FunctionResultV2;
+    logW3fRunStats(run);
     expect(result.canExec).to.equal(false);
   });
 });
