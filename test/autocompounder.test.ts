@@ -1,44 +1,44 @@
 import hre from "hardhat";
-import { before } from "mocha";
 import { expect } from "chai";
+import { before } from "mocha";
+import { BigNumber } from "ethers";
+const { ethers, deployments, w3f } = hre;
+
+import { Libraries } from "hardhat/types";
+import { AbiCoder } from "@ethersproject/abi";
+import { Contract } from "@ethersproject/contracts";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { Registry } from "../typechain/src/relay/";
 
 import {
-  impersonateAccount,
-  stopImpersonatingAccount,
+  time,
   setBalance,
   setStorageAt,
-  time,
-  setCode,
+  impersonateAccount,
+  stopImpersonatingAccount,
 } from "@nomicfoundation/hardhat-network-helpers";
+
 import {
-  Web3FunctionExecSuccess,
-  Web3FunctionUserArgs,
   Web3FunctionResultV2,
+  Web3FunctionUserArgs,
+  Web3FunctionExecSuccess,
 } from "@gelatonetwork/web3-functions-sdk";
 import { Web3FunctionHardhat } from "@gelatonetwork/web3-functions-sdk/hardhat-plugin";
 
-import jsonConstants from "../lib/relay-private/script/constants/Optimism.json";
 import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
-
-import {
-  AutoCompounder,
-  CompoundOptimizer,
-  AutoCompounderFactory,
-} from "../typechain/src/autoCompounder/";
-import { IVotingEscrow } from "../typechain/lib/contracts/contracts/interfaces/IVotingEscrow";
-import { ERC20 } from "../typechain/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20";
-import { IVoter } from "../typechain/lib/contracts/contracts/interfaces/IVoter";
+import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVotingEscrow";
+import { IVoter } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVoter";
+import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
+import { AutoCompounderFactory } from "../typechain/relay-private/src/autoCompounder";
 import { abi as erc20Abi } from "../web3-functions/relay/abis/erc20.json";
 import lpSugarAbi from "../web3-functions/relay/abis/lp_sugar.json";
+import { Registry } from "../typechain/relay-private/src";
 
-import { Contract } from "@ethersproject/contracts";
-import { AbiCoder } from "@ethersproject/abi";
-import { Libraries } from "hardhat/types";
-import { BigNumber } from "ethers";
-import { DAY, LP_SUGAR_ADDRESS, KEEPER_REGISTRY_ADDRESS, RELAY_REGISTRY_ADDRESS } from "../web3-functions/relay/utils/constants";
-const { ethers, deployments, w3f } = hre;
+import {
+  KEEPER_REGISTRY_ADDRESS,
+  RELAY_REGISTRY_ADDRESS,
+  LP_SUGAR_ADDRESS,
+  DAY,
+} from "../web3-functions/relay/utils/constants";
 
 interface BalanceSlot {
   address: string;
@@ -169,10 +169,10 @@ describe("AutoCompounder Automation Tests", function () {
   let relayW3f: Web3FunctionHardhat;
   let owner: SignerWithAddress;
 
-  let dai: ERC20;
-  let usdc: ERC20;
-  let weth: ERC20;
-  let velo: ERC20;
+  let dai: IERC20;
+  let usdc: IERC20;
+  let weth: IERC20;
+  let velo: IERC20;
   let relays: string[];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
