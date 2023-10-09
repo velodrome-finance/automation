@@ -4,19 +4,18 @@ import {
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
 import {
-  getCompounderRelayInfos,
   getCompounderTxData,
+  getCompounderRelayInfos,
 } from "./utils/autocompounder";
 import {
-  getConverterRelayInfos,
   getConverterTxData,
+  getConverterRelayInfos,
 } from "./utils/autoconverter";
-import { RELAY_REGISTRY_ADDRESS, WEEK, DAY, RelayInfo, TxData } from "./utils/constants";
+import { TxData, RelayInfo, RELAY_REGISTRY_ADDRESS } from "./utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
-
 
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
@@ -30,7 +29,12 @@ async function getFactoriesFromRegistry(
   );
 
   return (await relayFactoryRegistry.getAll()).map(
-    (f: string) => new Contract(f, ["function relays() view returns (address[] memory)"], provider)
+    (f: string) =>
+      new Contract(
+        f,
+        ["function relays() view returns (address[] memory)"],
+        provider
+      )
   );
 }
 

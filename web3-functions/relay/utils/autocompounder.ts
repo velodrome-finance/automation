@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
-import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-
-import { BigNumber } from "@ethersproject/bignumber";
-import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
+import { Contract } from "@ethersproject/contracts";
+import { BigNumber } from "@ethersproject/bignumber";
 
+import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
+import { RelayToken, RelayInfo, TxData, VELO } from "../utils/constants";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
-import {
-  RelayToken,
-  RelayInfo,
-  TxData,
-  VELO,
-} from "../utils/constants";
 
 const POOLS_TO_FETCH = 300;
 const REWARDS_TO_FETCH = 150;

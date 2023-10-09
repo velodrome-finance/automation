@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
+import { Provider } from "@ethersproject/providers";
+import { Contract } from "@ethersproject/contracts";
+import { BigNumber } from "@ethersproject/bignumber";
+
 import { abi as convAbi } from "../../../artifacts/lib/relay-private/src/autoConverter/AutoConverter.sol/AutoConverter.json";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
-
-import { BigNumber } from "@ethersproject/bignumber";
-import { Contract } from "@ethersproject/contracts";
-import { Provider } from "@ethersproject/providers";
-
 import { RelayInfo, RelayToken, TxData, Route } from "../utils/constants";
 
 // From a list of Token addresses, filters out Tokens with no balance
@@ -17,7 +16,11 @@ export async function getTokensToConvert(
   // Get all token balances
   let tokenBalances: BigNumber[] = await Promise.all(
     highLiqTokens.map((addr: string) =>
-      new Contract(addr, ["function balanceOf(address) view returns (uint256)"], provider).balanceOf(relayAddr)
+      new Contract(
+        addr,
+        ["function balanceOf(address) view returns (uint256)"],
+        provider
+      ).balanceOf(relayAddr)
     )
   );
 

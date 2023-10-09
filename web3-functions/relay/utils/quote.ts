@@ -132,7 +132,13 @@ export async function fetchQuote(
   chunkSize = 50
 ) {
   const routeChunks = chunk(routes, chunkSize);
-  const router: Contract = new Contract(ROUTER_ADDRESS, ["function getAmountsOut(uint256,tuple(address from, address to, bool stable, address factory)[]) public view returns (uint256[] memory)"], provider);
+  const router: Contract = new Contract(
+    ROUTER_ADDRESS,
+    [
+      "function getAmountsOut(uint256,tuple(address from, address to, bool stable, address factory)[]) public view returns (uint256[] memory)",
+    ],
+    provider
+  );
   amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
 
   let quoteChunks = [];
