@@ -110,6 +110,46 @@ async function processAutoCompounder(
     return txData;
 }
 
+async function setUpInitialStorage(
+  storage,
+  provider: Provider
+) {
+  // Get All Factories from Registry
+  let factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
+  factoriesQueue = factoriesQueue.slice(0,1); //TODO delete this
+  const currFactory = factoriesQueue[0] ?? "";
+  factoriesQueue = factoriesQueue.slice(1);
+  // TODO: handle multiple factories, as right this only handles autocompounder
+  let factory = new Contract(
+    currFactory,
+    ["function relays() view returns (address[] memory)"],
+    provider
+  );
+
+  // Get all Relays from Factory
+  let relaysQueue = await factory.relays();
+  const currRelay = relaysQueue[0] ?? "";
+  relaysQueue = relaysQueue.slice(1);
+
+  // Verify if Relays are AutoCompounders
+  let token = await new Contract(
+    currRelay,
+    ["function token() view returns (address)"],
+    provider
+  ).token();
+  const isAutoCompounder = JSON.stringify(token == jsonConstants.v2.VELO);
+
+  // Set Relays to be Processed
+  await storage.set("currRelay", currRelay);
+  await storage.set("relaysQueue", JSON.stringify(relaysQueue));
+  // Set Factories to be Processed
+  await storage.set("currFactory", currFactory);
+  await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
+  await storage.set("isAutoCompounder", isAutoCompounder);
+
+  return [currRelay, relaysQueue, currFactory, factoriesQueue, isAutoCompounder]
+}
+
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { storage, multiChainProvider } = context;
   const provider = multiChainProvider.default();
@@ -120,6 +160,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   let queue: string = (await storage.get("relaysQueue")) ?? "";
   let relaysQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
+
   queue = (await storage.get("factoriesQueue")) ?? "";
   let factoriesQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
@@ -129,47 +170,18 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   // Setup Initial State for Relay Processing
   // If all past Relays have been processed, restart processing
   //TODO: shorten this verification and also verify if factories are empty
-  if(currRelay == "" && relaysQueue.length == 0) {
+  // Also Verify if lastRunTimestamp < EpochStart + 1Hour
+  if(!currRelay && !currFactory) {
     try {
-      // Get All Factories from Registry
-      factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
-
-      currFactory = factoriesQueue[0] ?? "";
-      factoriesQueue = factoriesQueue.slice(1);
-      // TODO: handle multiple factories, as right this only handles autocompounder
-      let factory = new Contract(
-        currFactory,
-        ["function relays() view returns (address[] memory)"],
-        provider
-      );
-      // Get all Relays from Factory
-      relaysQueue = await factory.relays();
-      currRelay = relaysQueue[0] ?? "";
-      relaysQueue = relaysQueue.slice(1);
-
-      // Verify if Relays are AutoCompounders
-      let token = await new Contract(
-        currRelay,
-        ["function token() view returns (address)"],
-        provider
-      ).token();
-      isAutoCompounder = JSON.stringify(token == jsonConstants.v2.VELO);
-
-      // Set Relays to be Processed
-      await storage.set("currRelay", currRelay);
-      await storage.set("relaysQueue", JSON.stringify(relaysQueue));
-      // Set Factories to be Processed
-      await storage.set("currFactory", currFactory);
-      await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
-      await storage.set("isAutoCompounder", isAutoCompounder);
+      [currRelay, relaysQueue, currFactory, factoriesQueue, isAutoCompounder] = await setUpInitialStorage(storage, provider);
     } catch (err) {
       return { canExec: false, message: `Rpc call failed ${err}` };
     }
   }
 
   // Start processing current Relay
-   if(JSON.parse(isAutoCompounder)) {
-       txData = await processAutoCompounder(currRelay, currFactory, provider);
+  if(JSON.parse(isAutoCompounder)) {
+    txData = await processAutoCompounder(currRelay, currFactory, provider);
   } else {
      // Process AutoConverter
 
@@ -181,7 +193,6 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     relaysQueue = relaysQueue.slice(1);
     await storage.set("currRelay", currRelay);
     await storage.set("relaysQueue", JSON.stringify(relaysQueue));
-
   } else if(factoriesQueue.length != 0) {
     // Process next Factory
     currFactory = factoriesQueue[0];
@@ -190,10 +201,15 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
   } else {
     // All Relays have been processed
-    await storage.set("currRelay", "");
-    await storage.set("relaysQueue", JSON.stringify(relaysQueue));
-    await storage.set("currFactory", "");
-    await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
+    await Promise.all([
+      storage.delete("currRelay"),
+      storage.delete("relaysQueue"),
+      storage.delete("currFactory"),
+      storage.delete("factoriesQueue"),
+      storage.delete("isAutoCompounder"),
+    ]);
+    const timestamp = (await provider.getBlock("latest")).timestamp;
+    await storage.set("lastRunTimestamp", timestamp.toString());
   }
 
   // Return execution call data
