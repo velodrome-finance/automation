@@ -5,6 +5,7 @@ import {
 } from "@gelatonetwork/web3-functions-sdk";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
+import { BigNumber } from "@ethersproject/bignumber";
 
 import {
   getTokensToCompound,
@@ -33,58 +34,96 @@ async function getFactoriesFromRegistry(
   return (await relayFactoryRegistry.getAll());
 }
 
+// From a Relay Address and a list of Tokens, encode a swap per call
+async function processTokens(relayAddr: string, tokensQueue: string[], storage, provider: Provider): Promise<string> {
+  const [poolsGraph, poolsByAddress] = buildGraph(
+    await getPools(provider, POOLS_TO_FETCH)
+  ); // TODO: Find right value, was using 600, 0
+
+  const relay = new Contract(relayAddr, compAbi, provider);
+  const abi = relay.interface;
+  let call = "";
+  // Process One Swap per Execution
+  for(let i = 0; i < tokensQueue.length; i++) {
+
+    // Fetch Relay balance
+    const bal: BigNumber = await new Contract(
+      tokensQueue[i],
+      ["function balanceOf(address) view returns (uint256)"],
+      provider
+    ).balanceOf(relayAddr);
+
+    if(!bal.isZero()) { // Skip tokens with zero balance
+      const quote = await fetchQuote(
+        getRoutes(
+          poolsGraph,
+          poolsByAddress,
+          tokensQueue[i].toLowerCase(),
+          VELO.toLowerCase()
+        ),
+        bal,
+        provider
+      );
+
+      if (quote) { // If best quote was found
+        // Encode swap call
+        call = abi.encodeFunctionData("swapTokenToVELOKeeper", [
+          quote,
+          bal,
+          1,
+        ]);
+
+        tokensQueue = tokensQueue.slice(i + 1); // update queue
+        if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
+          await storage.set("stageQueue", JSON.stringify(tokensQueue));
+          return call;
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  //TODO: If no swap is to be returned maybe return compound call
+  await storage.set("currStage", "compound"); // Next stage is compound encoding
+  await storage.delete("stageQueue");
+  return call;
+}
+
 // Encodes all Swaps for AutoCompounder
-async function encodeAutoCompounderSwaps(
+async function encodeAutoCompounderSwap(
     relayAddr: string,
     factoryAddr: string,
+    stageName: string,
+    storage,
     provider: Provider
-): Promise<string[]> {
-    const relay = new Contract(relayAddr, compAbi, provider);
-    const abi = relay.interface;
+): Promise<string> {
     const factory = new Contract(
       factoryAddr,
       ["function highLiquidityTokens() view returns (address[] memory)"],
       provider
     );
-    let calls: string[] = [];
-    // Process all Swaps
-    const [poolsGraph, poolsByAddress] = buildGraph(
-      await getPools(provider, POOLS_TO_FETCH)
-    ); // TODO: Find right value, was using 600, 0
 
-    // TODO: Should I also keep tokens to swap in storage?
-    // Get All Tokens that should be Swapped
-    const tokensToSwap: string[] = await factory.highLiquidityTokens();
-    const tokensToCompound: RelayToken[] = await getTokensToCompound(relayAddr, tokensToSwap, provider);
-    // Swap all Relay Tokens to VELO
-    for(const token of tokensToCompound) {
-     // TODO: This call is too heavy and results in Memory Exceeded
-     // I believe it is caused by the getAmountsOut in loop inside the function
-     const quote = await fetchQuote(
-       getRoutes(
-         poolsGraph,
-         poolsByAddress,
-         token.address.toLowerCase(),
-         VELO.toLowerCase()
-       ),
-       token.balance,
-       provider
-     );
-     if (quote)
-       calls.push(
-         abi.encodeFunctionData("swapTokenToVELOKeeper", [
-           quote,
-           token.balance,
-           1,
-         ])
-       );
+    let queue: string = (await storage.get("stageQueue")) ?? "";
+    let tokensQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
+
+    // Set current Stage and Tokens Queue
+    if(stageName == "swap" && tokensQueue.length == 0) { // processing of swaps hasn't started
+      tokensQueue = await factory.highLiquidityTokens();
+      await storage.set("currStage", stageName);
+    } else if (stageName != "swap") {
+        return "";
     }
-    return calls;
+
+    // Process all Swaps
+    let call = await processTokens(relayAddr, tokensQueue, storage, provider);
+    return call;
 }
 
 async function processAutoCompounder(
     relayAddr: string,
     factoryAddr: string,
+    stageName: string,
+    storage,
     provider: Provider
 ): Promise<TxData[]> {
     let txData: TxData[] = [];
@@ -92,20 +131,36 @@ async function processAutoCompounder(
     const relay = new Contract(relayAddr, compAbi, provider);
     const abi = relay.interface;
 
+    let call: string = "";
     // Process Relay Rewards
     // TODO: Fix Claim Calls
-    // let calls: string[] = await getClaimCalls(relay, REWARDS_TO_FETCH);
+    // if(stageName == "claim")
+    //   call = await getClaimCalls(relay, REWARDS_TO_FETCH);
+    if(!call)
+      stageName = "swap";
 
-    let calls: string[] = [];
-    // Process all Swaps
-    calls = await encodeAutoCompounderSwaps(relayAddr, factoryAddr, provider);
+
+    // Process a Swap per Call
+    if(stageName == "swap")
+      call = await encodeAutoCompounderSwap(relayAddr, factoryAddr, stageName, storage, provider);
+    if(!call)
+      stageName = "compound";
+
+    if(stageName == "compound")
+      call = abi.encodeFunctionData("compound");
+
+
+    // TODO: Maybe do this inside encodeAutoCompounderSwap
+    // If no call returned from Swap, Compounding can take place right away
+    // if(!call) {
+    //   call = abi.encodeFunctionData("compound");
+    //   await storage.set("currStage", "compound");
+    // }
 
     // Compound all Tokens
-    //TODO: separate in multiple calls
-    calls.push(abi.encodeFunctionData("compound"));
     txData.push({
       to: relay.address,
-      data: abi.encodeFunctionData("multicall", [calls]),
+      data: call,
     } as TxData);
     return txData;
 }
@@ -116,7 +171,6 @@ async function setUpInitialStorage(
 ) {
   // Get All Factories from Registry
   let factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
-  factoriesQueue = factoriesQueue.slice(0,1); //TODO delete this
   const currFactory = factoriesQueue[0] ?? "";
   factoriesQueue = factoriesQueue.slice(1);
   // TODO: handle multiple factories, as right this only handles autocompounder
@@ -155,6 +209,8 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   const provider = multiChainProvider.default();
 
   // Fetch state of Execution
+  // Stages of Execution can either be 'claim', 'swap' and 'compound', in this order
+  let stageName: string = (await storage.get("currStage")) ?? "";
   let currRelay: string = (await storage.get("currRelay")) ?? "";
   let currFactory: string = (await storage.get("currFactory")) ?? "";
 
@@ -171,8 +227,10 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   // If all past Relays have been processed, restart processing
   //TODO: shorten this verification and also verify if factories are empty
   // Also Verify if lastRunTimestamp < EpochStart + 1Hour
+  // Also could verify if stageName is empty
   if(!currRelay && !currFactory) {
     try {
+      stageName = "claim"; // Claiming of Rewards is the first stage of Execution
       [currRelay, relaysQueue, currFactory, factoriesQueue, isAutoCompounder] = await setUpInitialStorage(storage, provider);
     } catch (err) {
       return { canExec: false, message: `Rpc call failed ${err}` };
@@ -181,35 +239,40 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   // Start processing current Relay
   if(JSON.parse(isAutoCompounder)) {
-    txData = await processAutoCompounder(currRelay, currFactory, provider);
+    txData = await processAutoCompounder(currRelay, currFactory, stageName, storage, provider);
   } else {
      // Process AutoConverter
 
   }
+
   // Set next Relay when last Relay's processing is complete
-  if(relaysQueue.length != 0) {
-    // Process next Relay
-    currRelay = relaysQueue[0];
-    relaysQueue = relaysQueue.slice(1);
-    await storage.set("currRelay", currRelay);
-    await storage.set("relaysQueue", JSON.stringify(relaysQueue));
-  } else if(factoriesQueue.length != 0) {
-    // Process next Factory
-    currFactory = factoriesQueue[0];
-    factoriesQueue = factoriesQueue.slice(1);
-    await storage.set("currFactory", currFactory);
-    await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
-  } else {
-    // All Relays have been processed
-    await Promise.all([
-      storage.delete("currRelay"),
-      storage.delete("relaysQueue"),
-      storage.delete("currFactory"),
-      storage.delete("factoriesQueue"),
-      storage.delete("isAutoCompounder"),
-    ]);
-    const timestamp = (await provider.getBlock("latest")).timestamp;
-    await storage.set("lastRunTimestamp", timestamp.toString());
+  if(stageName == "compound") {
+    await storage.set("currStage", "claim");
+    if(relaysQueue.length != 0) {
+      // Process next Relay
+      currRelay = relaysQueue[0];
+      relaysQueue = relaysQueue.slice(1);
+      await storage.set("currRelay", currRelay);
+      await storage.set("relaysQueue", JSON.stringify(relaysQueue));
+    } else if(factoriesQueue.length != 0) {
+      // Process next Factory
+      currFactory = factoriesQueue[0];
+      factoriesQueue = factoriesQueue.slice(1);
+      await storage.set("currFactory", currFactory);
+      await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
+    } else {
+      // All Relays have been processed
+      await Promise.all([
+        storage.delete("currStage"),
+        storage.delete("currRelay"),
+        storage.delete("relaysQueue"),
+        storage.delete("currFactory"),
+        storage.delete("factoriesQueue"),
+        storage.delete("isAutoCompounder"),
+      ]);
+      const timestamp = (await provider.getBlock("latest")).timestamp;
+      await storage.set("lastRunTimestamp", timestamp.toString());
+    }
   }
 
   // Return execution call data
