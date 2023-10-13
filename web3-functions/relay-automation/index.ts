@@ -118,14 +118,14 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], st
 
         tokensQueue = tokensQueue.slice(i + 1); // update queue
         if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
-          await storage.set("stageQueue", JSON.stringify(tokensQueue));
+          await storage.set("tokensQueue", JSON.stringify(tokensQueue));
           return call;
         }
       }
     }
   }
   await storage.set("currStage", "compound"); // Next stage is compound encoding
-  await storage.delete("stageQueue");
+  await storage.delete("tokensQueue");
   return call;
 }
 
@@ -143,7 +143,7 @@ async function encodeAutoCompounderSwap(
       provider
     );
 
-    let queue: string = (await storage.get("stageQueue")) ?? "";
+    let queue: string = (await storage.get("tokensQueue")) ?? "";
     let tokensQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
     // Set current Stage and Initial Tokens Queue
