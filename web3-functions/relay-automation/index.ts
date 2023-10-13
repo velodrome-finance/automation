@@ -20,6 +20,49 @@ import { getPools } from "./utils/rewards";
 const POOLS_TO_FETCH = 150; // NOTE: Can currently fetch 600 but can't handle as much
 const REWARDS_TO_FETCH = 70;
 
+// TODO: This could be used in General Utils
+async function setUpInitialStorage(
+  storage,
+  provider: Provider
+) {
+  // Get All Factories from Registry
+  let factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
+  // TODO: delete this
+  factoriesQueue = factoriesQueue.slice(0,1);
+  const currFactory = factoriesQueue[0] ?? "";
+  factoriesQueue = factoriesQueue.slice(1);
+  // TODO: handle multiple factories, as right this only handles autocompounder
+  let factory = new Contract(
+    currFactory,
+    ["function relays() view returns (address[] memory)"],
+    provider
+  );
+
+  // Get all Relays from Factory
+  let relaysQueue = await factory.relays();
+  const currRelay = relaysQueue[0] ?? "";
+  relaysQueue = relaysQueue.slice(1);
+
+  // Verify if Relays are AutoCompounders
+  let token = await new Contract(
+    currRelay,
+    ["function token() view returns (address)"],
+    provider
+  ).token();
+  const isAutoCompounder = JSON.stringify(token == jsonConstants.v2.VELO);
+
+  // Set Relays to be Processed
+  await storage.set("currRelay", currRelay);
+  await storage.set("relaysQueue", JSON.stringify(relaysQueue));
+  // Set Factories to be Processed
+  await storage.set("currFactory", currFactory);
+  await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
+  await storage.set("isAutoCompounder", isAutoCompounder);
+
+  return [currRelay, relaysQueue, currFactory, factoriesQueue, isAutoCompounder]
+}
+
+// TODO: This could be used in General Utils
 // Retrieve all Relay Factories from the Registry
 async function getFactoriesFromRegistry(
   registryAddr: string,
@@ -34,8 +77,9 @@ async function getFactoriesFromRegistry(
   return (await relayFactoryRegistry.getAll());
 }
 
+// TODO: This could be used in General Utils Except for Compounding
 // From a Relay Address and a list of Tokens, encode a swap per call
-async function processTokens(relayAddr: string, tokensQueue: string[], storage, provider: Provider): Promise<string> {
+async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], storage, provider: Provider): Promise<string> {
   const [poolsGraph, poolsByAddress] = buildGraph(
     await getPools(provider, POOLS_TO_FETCH)
   ); // TODO: Find right value, was using 600, 0
@@ -87,6 +131,7 @@ async function processTokens(relayAddr: string, tokensQueue: string[], storage, 
   return call;
 }
 
+// TODO: AutoCompounder specific
 // Encodes all Swaps for AutoCompounder
 async function encodeAutoCompounderSwap(
     relayAddr: string,
@@ -113,9 +158,10 @@ async function encodeAutoCompounderSwap(
     }
 
     // Process next Swap from Tokens Queue
-    return await processTokens(relayAddr, tokensQueue, storage, provider);
+    return await encodeSwapFromTokens(relayAddr, tokensQueue, storage, provider);
 }
 
+// TODO: AutoCompounder specific
 // Encode AutoCompounder calls, one per Execution
 async function processAutoCompounder(
     relayAddr: string,
@@ -152,45 +198,6 @@ async function processAutoCompounder(
       data: call,
     } as TxData);
     return txData;
-}
-
-async function setUpInitialStorage(
-  storage,
-  provider: Provider
-) {
-  // Get All Factories from Registry
-  let factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
-  const currFactory = factoriesQueue[0] ?? "";
-  factoriesQueue = factoriesQueue.slice(1);
-  // TODO: handle multiple factories, as right this only handles autocompounder
-  let factory = new Contract(
-    currFactory,
-    ["function relays() view returns (address[] memory)"],
-    provider
-  );
-
-  // Get all Relays from Factory
-  let relaysQueue = await factory.relays();
-  const currRelay = relaysQueue[0] ?? "";
-  relaysQueue = relaysQueue.slice(1);
-
-  // Verify if Relays are AutoCompounders
-  let token = await new Contract(
-    currRelay,
-    ["function token() view returns (address)"],
-    provider
-  ).token();
-  const isAutoCompounder = JSON.stringify(token == jsonConstants.v2.VELO);
-
-  // Set Relays to be Processed
-  await storage.set("currRelay", currRelay);
-  await storage.set("relaysQueue", JSON.stringify(relaysQueue));
-  // Set Factories to be Processed
-  await storage.set("currFactory", currFactory);
-  await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
-  await storage.set("isAutoCompounder", isAutoCompounder);
-
-  return [currRelay, relaysQueue, currFactory, factoriesQueue, isAutoCompounder]
 }
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
