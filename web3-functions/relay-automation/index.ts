@@ -204,10 +204,10 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let currRelay: string = (await storage.get("currRelay")) ?? "";
   let currFactory: string = (await storage.get("currFactory")) ?? "";
 
-  let queue: string = (await storage.get("relaysQueue")) ?? "";
+  let queue: string = (await storage.get("relaysQueue")) ?? ""; // fetch relays to process
   let relaysQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
-  queue = (await storage.get("factoriesQueue")) ?? "";
+  queue = (await storage.get("factoriesQueue")) ?? ""; // fetch factories to process
   let factoriesQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
   let isAutoCompounder: string = (await storage.get("isAutoCompounder")) ?? "";
@@ -235,6 +235,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   }
 
+  // Fetch current stage after call is processed
   const currStage = await storage.get("currStage") ?? "";
   if (currStage)
     stageName = currStage;
