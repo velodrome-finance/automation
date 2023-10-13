@@ -146,13 +146,6 @@ async function processAutoCompounder(
       await storage.set("currStage", "complete"); // After compounding Relay is processed
     }
 
-    // TODO: Maybe do this inside encodeAutoCompounderSwap
-    // If no call returned from Swap, Compounding can take place right away
-    // if(!call) {
-    //   call = abi.encodeFunctionData("compound");
-    //   await storage.set("currStage", "compound");
-    // }
-
     // Compound all Tokens
     txData.push({
       to: relay.address,
