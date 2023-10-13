@@ -14,11 +14,11 @@ import { abi as compAbi } from "../../artifacts/lib/relay-private/src/autoCompou
 import { LP_SUGAR_ABI, LP_SUGAR_ADDRESS, RelayToken, RELAY_REGISTRY_ADDRESS, TxData, VELO } from "./utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 import { buildGraph, fetchQuote, getRoutes } from "./utils/quote";
-import { getPools } from "./utils/rewards";
+import { getClaimCalls, getPools } from "./utils/rewards";
 
 //TODO: move this
 const POOLS_TO_FETCH = 150; // NOTE: Can currently fetch 600 but can't handle as much
-const REWARDS_TO_FETCH = 70;
+const REWARDS_TO_FETCH = 150;
 
 // TODO: This could be used in General Utils
 async function setUpInitialStorage(
@@ -27,8 +27,6 @@ async function setUpInitialStorage(
 ) {
   // Get All Factories from Registry
   let factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
-  // TODO: delete this
-  factoriesQueue = factoriesQueue.slice(0,1);
   const currFactory = factoriesQueue[0] ?? "";
   factoriesQueue = factoriesQueue.slice(1);
   // TODO: handle multiple factories, as right this only handles autocompounder
@@ -136,7 +134,6 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], st
 async function encodeAutoCompounderSwap(
     relayAddr: string,
     factoryAddr: string,
-    stageName: string,
     storage,
     provider: Provider
 ): Promise<string> {
@@ -150,11 +147,9 @@ async function encodeAutoCompounderSwap(
     let tokensQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
     // Set current Stage and Initial Tokens Queue
-    if(stageName == "swap" && tokensQueue.length == 0) { // processing of swaps hasn't started
+    if(tokensQueue.length == 0) { // processing of swaps hasn't started
       tokensQueue = await factory.highLiquidityTokens();
-      await storage.set("currStage", stageName);
-    } else if (stageName != "swap") {
-        return "";
+      await storage.set("currStage", "swap");
     }
 
     // Process next Swap from Tokens Queue
@@ -170,34 +165,33 @@ async function processAutoCompounder(
     storage,
     provider: Provider
 ): Promise<TxData[]> {
-    let txData: TxData[] = [];
     // Process AutoCompounder
     const relay = new Contract(relayAddr, compAbi, provider);
     const abi = relay.interface;
 
-    let call: string = "";
+    let calls: string[] = [];
     // Process Relay Rewards
-    // TODO: Fix Claim Calls
-    // if(stageName == "claim")
-    //   call = await getClaimCalls(relay, REWARDS_TO_FETCH);
-    if(!call) // If no Claim calls left, next stage is Swap
-      stageName = "swap";
-
-
-    // Process a Swap per Call
-    if(stageName == "swap") // If no Swaps left, next call should be Compound
-      call = await encodeAutoCompounderSwap(relayAddr, factoryAddr, stageName, storage, provider);
-    if(!call) {
-      call = abi.encodeFunctionData("compound");
-      await storage.set("currStage", "complete"); // After compounding Relay is processed
+    if(stageName == "claim") {
+      calls = await getClaimCalls(relay, REWARDS_TO_FETCH, storage);
+      if(calls.length == 1 && !calls[0]) { // If no Claim calls left, next stage is Swap
+        stageName = "swap";
+        calls = [];
+      }
     }
 
-    // Compound all Tokens
-    txData.push({
-      to: relay.address,
-      data: call,
-    } as TxData);
-    return txData;
+    // Process a Swap per Call
+    if(stageName == "swap") { // If no Swaps left, next call should be Compound
+      const call = await encodeAutoCompounderSwap(relayAddr, factoryAddr, storage, provider);
+      if(call)
+        calls.push(call);
+      else {
+        calls = [abi.encodeFunctionData("compound")];
+        await storage.set("currStage", "complete"); // After compounding Relay is processed
+      }
+    }
+
+    // TODO: encode calls in multicall to save gas?
+    return calls.map((call) => ({to: relay.address, data: call} as TxData));
 }
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
