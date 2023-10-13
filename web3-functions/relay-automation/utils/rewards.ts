@@ -13,14 +13,24 @@ import { BigNumber } from "@ethersproject/bignumber";
 // Fetches and claims all available Rewards
 export async function getClaimCalls(
   relay: Contract,
-  pairsLength: number
+  pairsLength: number,
+  storage
 ): Promise<string[]> {
   const mTokenId = await relay.mTokenId();
   let calls = [];
-  console.log("WILL FETCH REWARDS NOW");
-  let rewards = await getRewards(BigNumber.from(4145), relay.provider, pairsLength);
-  console.log("REWARDS FETCHED");
-  console.log(rewards);
+  let offset: number = Number(await storage.get("offset") ?? "");
+
+  if(!offset)
+    await storage.set("currStage", "claim");
+
+  if(offset == pairsLength) {
+      await storage.delete("offset");
+      await storage.set("currStage", "swap");
+      return [""]; // TODO: better way to do this
+  }
+
+  // TODO: should storage be updated inside getClaimCalls or getRewards?
+  let rewards = await getRewards(mTokenId, relay.provider, offset, pairsLength, storage);
 
   // Claim Fees
   let rewardAddrs: string[] = Object.keys(rewards.fee);
@@ -40,6 +50,7 @@ export async function getClaimCalls(
         Object.values(rewards.bribe),
       ])
     );
+
   return calls;
 }
 
@@ -47,49 +58,38 @@ export async function getClaimCalls(
 async function getRewards(
   venft: BigNumber,
   provider: Provider,
+  startIndex: number,
   pairsLength: number,
-  chunkSize = 100
+  storage,
+  chunkSize = 50
 ) {
   const lpSugarContract: Contract = new Contract(
     LP_SUGAR_ADDRESS,
     LP_SUGAR_ABI,
     provider
   );
+
+  const endIndex = Math.min(startIndex + chunkSize, pairsLength);
+  const rewards: Reward[] = await lpSugarContract.rewards(
+    endIndex - startIndex,
+    startIndex,
+    venft
+  );
+
   const feeRewardInfo: RewardContractInfo = {};
   const bribeRewardInfo: RewardContractInfo = {};
-
-  const promises: Promise<void>[] = [];
-  for (let startIndex = 0; startIndex < pairsLength; startIndex += chunkSize) {
-    const endIndex = Math.min(startIndex + chunkSize, pairsLength);
-    promises.push(
-      // eslint-disable-next-line no-async-promise-executor
-      new Promise(async (resolve, reject) => {
-        try {
-          const rewards: Reward[] = await lpSugarContract.rewards(
-            endIndex - startIndex,
-            startIndex,
-            venft
-          );
-
-          // Separate rewards by Bribe and Fees
-          for (const reward of rewards) {
-            if (reward.fee != ZERO_ADDRESS)
-              feeRewardInfo[reward.fee] = (
-                feeRewardInfo[reward.fee] || []
-              ).concat(reward.token);
-            if (reward.bribe != ZERO_ADDRESS)
-              bribeRewardInfo[reward.bribe] = (
-                bribeRewardInfo[reward.bribe] || []
-              ).concat(reward.token);
-          }
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      })
-    );
+  // Separate rewards by Bribe and Fees
+  for (const reward of rewards) {
+    if (reward.fee != ZERO_ADDRESS)
+      feeRewardInfo[reward.fee] = (
+        feeRewardInfo[reward.fee] || []
+      ).concat(reward.token);
+    if (reward.bribe != ZERO_ADDRESS)
+      bribeRewardInfo[reward.bribe] = (
+        bribeRewardInfo[reward.bribe] || []
+      ).concat(reward.token);
   }
-  await Promise.all(promises);
+  storage.set("offset", endIndex.toString()); // update offset for next run
   return { fee: feeRewardInfo, bribe: bribeRewardInfo };
 }
 
