@@ -7,12 +7,9 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 
-import {
-  getTokensToCompound,
-} from "./utils/autocompounder";
 import { abi as compAbi } from "../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { LP_SUGAR_ABI, LP_SUGAR_ADDRESS, RelayToken, RELAY_REGISTRY_ADDRESS, TxData, VELO } from "./utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
+import { RELAY_REGISTRY_ADDRESS, TxData, VELO } from "./utils/constants";
 import { buildGraph, fetchQuote, getRoutes } from "./utils/quote";
 import { getClaimCalls, getPools } from "./utils/rewards";
 
