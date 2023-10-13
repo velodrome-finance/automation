@@ -47,8 +47,9 @@ async function processTokens(relayAddr: string, tokensQueue: string[], storage, 
   for(let i = 0; i < tokensQueue.length; i++) {
 
     // Fetch Relay balance
+    const token = tokensQueue[i];
     const bal: BigNumber = await new Contract(
-      tokensQueue[i],
+      token,
       ["function balanceOf(address) view returns (uint256)"],
       provider
     ).balanceOf(relayAddr);
@@ -58,7 +59,7 @@ async function processTokens(relayAddr: string, tokensQueue: string[], storage, 
         getRoutes(
           poolsGraph,
           poolsByAddress,
-          tokensQueue[i].toLowerCase(),
+          token.toLowerCase(),
           VELO.toLowerCase()
         ),
         bal,
@@ -67,10 +68,10 @@ async function processTokens(relayAddr: string, tokensQueue: string[], storage, 
 
       if (quote) { // If best quote was found
         // Encode swap call
-        call = abi.encodeFunctionData("swapTokenToVELOKeeper", [
-          quote,
-          bal,
-          1,
+        call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
+          token,
+          500, // TODO: Find desired slippage
+          quote
         ]);
 
         tokensQueue = tokensQueue.slice(i + 1); // update queue
@@ -81,7 +82,6 @@ async function processTokens(relayAddr: string, tokensQueue: string[], storage, 
       }
     }
   }
-  //TODO: If no swap is to be returned maybe return compound call
   await storage.set("currStage", "compound"); // Next stage is compound encoding
   await storage.delete("stageQueue");
   return call;
