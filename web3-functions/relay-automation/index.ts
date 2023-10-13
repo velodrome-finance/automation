@@ -77,8 +77,6 @@ async function processTokens(relayAddr: string, tokensQueue: string[], storage, 
         if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
           await storage.set("stageQueue", JSON.stringify(tokensQueue));
           return call;
-        } else {
-          break;
         }
       }
     }
@@ -106,7 +104,7 @@ async function encodeAutoCompounderSwap(
     let queue: string = (await storage.get("stageQueue")) ?? "";
     let tokensQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
-    // Set current Stage and Tokens Queue
+    // Set current Stage and Initial Tokens Queue
     if(stageName == "swap" && tokensQueue.length == 0) { // processing of swaps hasn't started
       tokensQueue = await factory.highLiquidityTokens();
       await storage.set("currStage", stageName);
@@ -114,11 +112,11 @@ async function encodeAutoCompounderSwap(
         return "";
     }
 
-    // Process all Swaps
-    let call = await processTokens(relayAddr, tokensQueue, storage, provider);
-    return call;
+    // Process next Swap from Tokens Queue
+    return await processTokens(relayAddr, tokensQueue, storage, provider);
 }
 
+// Encode AutoCompounder calls, one per Execution
 async function processAutoCompounder(
     relayAddr: string,
     factoryAddr: string,
@@ -136,19 +134,17 @@ async function processAutoCompounder(
     // TODO: Fix Claim Calls
     // if(stageName == "claim")
     //   call = await getClaimCalls(relay, REWARDS_TO_FETCH);
-    if(!call)
+    if(!call) // If no Claim calls left, next stage is Swap
       stageName = "swap";
 
 
     // Process a Swap per Call
-    if(stageName == "swap")
+    if(stageName == "swap") // If no Swaps left, next call should be Compound
       call = await encodeAutoCompounderSwap(relayAddr, factoryAddr, stageName, storage, provider);
-    if(!call)
-      stageName = "compound";
-
-    if(stageName == "compound")
+    if(!call) {
       call = abi.encodeFunctionData("compound");
-
+      await storage.set("currStage", "complete"); // After compounding Relay is processed
+    }
 
     // TODO: Maybe do this inside encodeAutoCompounderSwap
     // If no call returned from Swap, Compounding can take place right away
@@ -209,7 +205,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   const provider = multiChainProvider.default();
 
   // Fetch state of Execution
-  // Stages of Execution can either be 'claim', 'swap' and 'compound', in this order
+  // Stages of Execution can either be 'claim', 'swap', 'compound' and 'complete', in this order
   let stageName: string = (await storage.get("currStage")) ?? "";
   let currRelay: string = (await storage.get("currRelay")) ?? "";
   let currFactory: string = (await storage.get("currFactory")) ?? "";
@@ -245,19 +241,23 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   }
 
+  const currStage = await storage.get("currStage") ?? "";
+  if (currStage)
+    stageName = currStage;
   // Set next Relay when last Relay's processing is complete
-  if(stageName == "compound") {
-    await storage.set("currStage", "claim");
+  if(stageName == "complete") { // If current stage is Compound, Relay has finished processing
     if(relaysQueue.length != 0) {
       // Process next Relay
       currRelay = relaysQueue[0];
       relaysQueue = relaysQueue.slice(1);
+      await storage.set("currStage", "claim");
       await storage.set("currRelay", currRelay);
       await storage.set("relaysQueue", JSON.stringify(relaysQueue));
     } else if(factoriesQueue.length != 0) {
       // Process next Factory
       currFactory = factoriesQueue[0];
       factoriesQueue = factoriesQueue.slice(1);
+      await storage.set("currStage", "claim");
       await storage.set("currFactory", currFactory);
       await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
     } else {
