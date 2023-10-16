@@ -4,9 +4,9 @@ import { Contract } from "@ethersproject/contracts";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
+import { PROCESSING_COMPLETE, TxData, VELO } from "../utils/constants";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
-import { TxData, VELO } from "../utils/constants";
 
 const REWARDS_TO_FETCH = 150;
 const POOLS_TO_FETCH = 150;
@@ -27,7 +27,7 @@ export async function processAutoCompounder(
     // Process Relay Rewards
     if(stageName == "claim") {
       calls = await getClaimCalls(relay, REWARDS_TO_FETCH, storage);
-      if(calls.length == 1 && !calls[0]) { // If no Claim calls left, next stage is Swap
+      if(calls.length == 1 && calls[0] == PROCESSING_COMPLETE) { // If no Claim calls left, next stage is Swap
         stageName = "swap";
         calls = [];
       }
@@ -107,7 +107,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], st
         provider
       );
 
-      if (quote) { // If best quote was found
+    if (quote) { // If best quote was found
         // Encode swap call
         call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
           token,
