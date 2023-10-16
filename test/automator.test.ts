@@ -112,8 +112,6 @@ describe("Automation Script Tests", function () {
 
     // Fetch all the AutoCompounders and seed them with Tokens
     relays = await autoCompounderFactory.relays();
-    console.log("THESE ARE THE TESTING RELAYS");
-    console.log(relays);
     for (const relay of relays.slice(1)) { // Only seed created Relays
       await seedRelayWithBalances(relay, storageSlots);
     }
@@ -168,7 +166,6 @@ describe("Automation Script Tests", function () {
      let rpcCalls = 0;
      // Execute script until the automation is finished
      while(!storageBefore.lastRunTimestamp) {
-         console.log("======================================== // NEW RUN // ========================================");
          // Executes Script
          let run = await relayW3f.run({storage: storageBefore});
          ({result, storage: storageAfter} = run);
@@ -189,9 +186,6 @@ describe("Automation Script Tests", function () {
          }
          storageBefore = storageAfter.storage;
      }
-     console.log(`ALL RPC CALLS: ${rpcCalls}`);
-     console.log(`Number of Runs: ${numberOfRuns}`);
-     console.log(storageAfter);
 
      // All balances were Swapped to VELO and compounded correctly for all Relays
      await logRelayBalances(relays, tokensToCompound, mTokens, escrow);
