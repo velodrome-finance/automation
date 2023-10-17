@@ -48,6 +48,24 @@ export async function processAutoCompounder(
     return calls.map((call) => ({to: relay.address, data: call} as TxData));
 }
 
+async function filterHighLiqTokens(relayAddr: string, highLiqTokens: string[], provider: Provider) {
+    let tokensQueue: string[] = [];
+    let balancesQueue: string[] = [];
+    for(const token of highLiqTokens) {
+      const bal: BigNumber = await new Contract(
+        token,
+        ["function balanceOf(address) view returns (uint256)"],
+        provider
+      ).balanceOf(relayAddr);
+      if(!bal.isZero()) {
+          tokensQueue.push(token);
+          balancesQueue.push(bal.toString());
+      }
+    }
+    return {tokens: tokensQueue, balances: balancesQueue};
+
+}
+
 // Encodes all Swaps for AutoCompounder
 async function encodeAutoCompounderSwap(
     relayAddr: string,
