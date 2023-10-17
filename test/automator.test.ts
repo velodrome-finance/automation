@@ -89,7 +89,7 @@ describe("Automation Script Tests", function () {
     );
 
     // Mint VELO to test user
-    await setBalanceOf(owner.address, storageSlots["velo"], 10_000); //TODO: this bal could be smaller
+    await setBalanceOf(owner.address, storageSlots["velo"], 1000);
 
     // Setting owner as Keeper
     let allowedManager = await keeperRegistry.owner();
@@ -104,7 +104,7 @@ describe("Automation Script Tests", function () {
 
     // Create multiple AutoCompounders and save their mTokenId's
     //TODO: Move AutoCompounderId to constants
-    mTokens.push(BigNumber.from(19041)); // On-Chain AutoCompounder's TokenID from current block 
+    mTokens.push(BigNumber.from(19041)); // On-Chain AutoCompounder's TokenID from current block
     for (let i = 0; i < RELAYS_TO_TEST; i++)
       mTokens.push(
         await createAutoCompounder(autoCompounderFactory, velo, escrow, owner)
@@ -112,11 +112,13 @@ describe("Automation Script Tests", function () {
 
     // Fetch all the AutoCompounders and seed them with Tokens
     relays = await autoCompounderFactory.relays();
+    console.log("THESE ARE THE TESTING RELAYS");
+    console.log(relays);
     for (const relay of relays.slice(1)) { // Only seed created Relays
       await seedRelayWithBalances(relay, storageSlots);
     }
 
-    // TODO: Should warp to last timestamp of First Day's Hour
+    // TODO: Should warp to last timestamp of First Day's Hour after Relay Lib is updated
     // Warp to the last timestamp of the First Hour of Epoch
     let timestamp = await time.latest();
     // TODO: Uncomment this when Relay Lib is updated
@@ -128,7 +130,7 @@ describe("Automation Script Tests", function () {
 
     relayW3f = w3f.get("relay-automation");
 
-    // // TODO: Should I uncomment this?
+    // // TODO: Should I uncomment this caching?
     // Warm up hardhat cache for lpSugar calls
     const lpSugarContract = await ethers.getContractAt(
       lpSugarAbi,
@@ -147,7 +149,7 @@ describe("Automation Script Tests", function () {
 
        if(!Number(i)) // ignore setup verification for first relay as no balances are being sent to it
          continue;
-       expect(oldBal).to.equal(BigNumber.from(10).pow(18));
+       expect(oldBal).to.equal(BigNumber.from(10).pow(19));
        for (const j in tokensToCompound) {
          const token = tokensToCompound[j];
 
