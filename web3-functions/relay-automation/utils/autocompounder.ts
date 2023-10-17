@@ -36,10 +36,13 @@ export async function processAutoCompounder(
     // Process a Swap per Call
     if(stageName == "swap") {// If no Swaps left, next call should be Compound
       const call = await encodeAutoCompounderSwap(relayAddr, factoryAddr, storage, provider);
-      if(call) {
+      stageName = await storage.get("currStage"); // Check if Current Stage changed
+
+      if(call)
         calls.push(call);
-      } else {
-        calls = [abi.encodeFunctionData("compound")];
+
+      if(stageName == "compound") { // If all swaps were encoded, next stage will be "compound"
+        calls.push(abi.encodeFunctionData("compound"));
         await storage.set("currStage", "complete"); // After compounding Relay is processed
       }
     }
@@ -81,20 +84,26 @@ async function encodeAutoCompounderSwap(
 
     let queue: string = (await storage.get("tokensQueue")) ?? "";
     let tokensQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
+    queue = (await storage.get("balancesQueue")) ?? "";
+    let balancesQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
     // Set current Stage and Initial Tokens Queue
     if(tokensQueue.length == 0) { // processing of swaps hasn't started
       tokensQueue = await factory.highLiquidityTokens();
       await storage.set("currStage", "swap");
+      //TODO: Use balancesQueue in encodeSwapFromTokens
+      let tokens = await filterHighLiqTokens(relayAddr, tokensQueue, provider);
+      tokensQueue = tokens.tokens;
+      balancesQueue = tokens.balances;
     }
 
     // Process next Swap from Tokens Queue
-    return await encodeSwapFromTokens(relayAddr, tokensQueue, storage, provider);
+    return await encodeSwapFromTokens(relayAddr, tokensQueue, balancesQueue, storage, provider);
 }
 
 // TODO: If not for Compounding this could be on relay.ts
 // From a Relay Address and a list of Tokens, encode a swap per call
-async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], storage, provider: Provider): Promise<string> {
+async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], balancesQueue: string[], storage, provider: Provider): Promise<string> {
   const [poolsGraph, poolsByAddress] = buildGraph(
     await getPools(provider, POOLS_TO_FETCH)
   ); // TODO: Find right value, was using 600, 0
@@ -107,11 +116,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], st
 
     // Fetch Relay balance
     const token = tokensQueue[i];
-    const bal: BigNumber = await new Contract(
-      token,
-      ["function balanceOf(address) view returns (uint256)"],
-      provider
-    ).balanceOf(relayAddr);
+    const bal = BigNumber.from(balancesQueue[i]);
 
     if(!bal.isZero()) { // Skip tokens with zero balance
       const quote = await fetchQuote(
@@ -133,15 +138,19 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], st
           quote
         ]);
 
-        tokensQueue = tokensQueue.slice(i + 1); // update queue
+        // update queues
+        tokensQueue = tokensQueue.slice(i + 1);
+        balancesQueue = balancesQueue.slice(i + 1);
         if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
           await storage.set("tokensQueue", JSON.stringify(tokensQueue));
+          await storage.set("balancesQueue", JSON.stringify(balancesQueue));
           return call;
         }
       }
     }
   }
   await storage.set("currStage", "compound"); // Next stage is compound encoding
+  await storage.delete("balancesQueue");
   await storage.delete("tokensQueue");
   return call;
 }
