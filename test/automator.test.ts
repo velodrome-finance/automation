@@ -208,25 +208,30 @@ describe("Automation Script Tests", function () {
   });
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
-    // TODO: Refactor to endOfFirstHour when RelayLib is updated
-    const endOfFirstDayCurrentEpoch = timestamp - (timestamp % (7 * DAY)) + DAY;
+    // TODO: Refactor this test to endOfFirstHour when RelayLib is updated
+    const endOfFirstDayNextEpoch = (timestamp - (timestamp % (7 * DAY)) + DAY) + 7 * DAY;
 
     let storageBefore = relayW3f.getStorage();
-    // Cannot exec if last run happened in same epoch
-    storageBefore["keeperLastRun"] = endOfFirstDayCurrentEpoch.toString(); 
+    // Setting Last run as the End of First day of Current Epoch
+    storageBefore["keeperLastRun"] = endOfFirstDayNextEpoch.toString();
+    await time.increaseTo(endOfFirstDayNextEpoch);
     let run = await relayW3f.run();
     let result = run.result;
     logW3fRunStats(run);
+    // Cannot exec if last run happened in same epoch
     expect(result.canExec).to.equal(false);
 
-    // Can exec if last run happened before the start of second day of current epoch
-    storageBefore["keeperLastRun"] = (endOfFirstDayCurrentEpoch - 1).toString();
+    await time.increase(7 * DAY); // Skipping until the last Timestamp of the End of First day of Next Epoch
     run = await relayW3f.run();
     result = run.result;
-    expect(result.canExec).to.equal(true);
-    storageBefore["keeperLastRun"] = (endOfFirstDayCurrentEpoch - 7 * DAY).toString();
+    // Cannot exec for whole epoch, as previous execution happened in it
+    expect(result.canExec).to.equal(false);
+
+    // Can exec if last run happened before the start of second hour of current epoch
+    await time.increase(1); // Skipping to start of Second day
     run = await relayW3f.run();
     result = run.result;
+    // Can exec from the start of Second Day
     expect(result.canExec).to.equal(true);
   });
 });
