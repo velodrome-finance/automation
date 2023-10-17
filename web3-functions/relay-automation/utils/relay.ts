@@ -8,10 +8,13 @@ import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.
 // Verifies if script can run in Current Epoch
 export async function canRunInCurrentEpoch(provider, storage): Promise<boolean> {
   const timestamp = (await provider.getBlock("latest")).timestamp;
-  const endOfFirstDay = timestamp - (timestamp % (7 * DAY)) + DAY;
+  const startOfCurrentEpoch: number = timestamp - (timestamp % (7 * DAY));
   const keeperLastRun: number = Number((await storage.get("keeperLastRun")) ?? "");
+  const startOfLastRunEpoch: number = keeperLastRun - (keeperLastRun % (7 * DAY));
 
-  return (!keeperLastRun || keeperLastRun < endOfFirstDay); // Can only run after the First hour of epoch
+  //TODO: refactor DAY to HOUR
+  // Can only run Once per Epoch and only after its First Hour
+  return (!keeperLastRun || (startOfCurrentEpoch != startOfLastRunEpoch && timestamp > startOfCurrentEpoch + DAY));
 }
 
 // Retrieve all Relay Factories from the Registry
