@@ -5,6 +5,7 @@ import {
   ZERO_ADDRESS,
   Reward,
   RewardContractInfo,
+  PROCESSING_COMPLETE,
 } from "../utils/constants";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
@@ -26,7 +27,7 @@ export async function getClaimCalls(
   if(offset == pairsLength) {
       await storage.delete("offset");
       await storage.set("currStage", "swap");
-      return [""]; // TODO: better way to do this
+      return [PROCESSING_COMPLETE];
   }
 
   // TODO: should storage be updated inside getClaimCalls or getRewards?
