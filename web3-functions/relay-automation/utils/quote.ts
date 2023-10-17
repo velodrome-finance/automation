@@ -121,7 +121,6 @@ export function getRoutes(
 /**
  * Returns the best quote for a bunch of routes and an amount
  *
- * TODO: We could split the `amount` between multiple routes
  * if the quoted amount is the same. This should theoretically limit
  * the price impact on a trade.
  */
@@ -139,7 +138,6 @@ export async function fetchQuote(
     ],
     provider
   );
-  amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
 
   let quoteChunks = [];
   // Split into chunks and get the route quotes...

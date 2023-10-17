@@ -30,7 +30,6 @@ export async function getClaimCalls(
       return [PROCESSING_COMPLETE];
   }
 
-  // TODO: should storage be updated inside getClaimCalls or getRewards?
   let rewards = await getRewards(mTokenId, relay.provider, offset, pairsLength, storage);
 
   // Claim Fees
