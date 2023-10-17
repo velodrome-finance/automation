@@ -110,38 +110,36 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
   // Process One Swap per Execution
   for(let i = 0; i < tokensQueue.length; i++) {
 
-    // Fetch Relay balance
     const token = tokensQueue[i];
     const bal = BigNumber.from(balancesQueue[i]);
 
-    if(!bal.isZero()) { // Skip tokens with zero balance
-      const quote = await fetchQuote(
-        getRoutes(
-          poolsGraph,
-          poolsByAddress,
-          token.toLowerCase(),
-          VELO.toLowerCase()
-        ),
-        bal,
-        provider
-      );
+    // Fetch best Swap quote
+    const quote = await fetchQuote(
+      getRoutes(
+        poolsGraph,
+        poolsByAddress,
+        token.toLowerCase(),
+        VELO.toLowerCase()
+      ),
+      bal,
+      provider
+    );
 
-    if (quote) { // If best quote was found
-        // Encode swap call
-        call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
-          token,
-          500, // TODO: Find desired slippage
-          quote
-        ]);
+    if (quote) {
+      // If best quote was found, encode swap call
+      call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
+        token,
+        500, // TODO: Find desired slippage
+        quote
+      ]);
 
-        // update queues
-        tokensQueue = tokensQueue.slice(i + 1);
-        balancesQueue = balancesQueue.slice(i + 1);
-        if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
-          await storage.set("tokensQueue", JSON.stringify(tokensQueue));
-          await storage.set("balancesQueue", JSON.stringify(balancesQueue));
-          return call;
-        }
+      // update queues
+      tokensQueue = tokensQueue.slice(i + 1);
+      balancesQueue = balancesQueue.slice(i + 1);
+      if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
+        await storage.set("balancesQueue", JSON.stringify(balancesQueue));
+        await storage.set("tokensQueue", JSON.stringify(tokensQueue));
+        return call;
       }
     }
   }
