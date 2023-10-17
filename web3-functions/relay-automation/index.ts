@@ -19,11 +19,11 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let factoriesQueue: string[];
   let isAutoCompounder: string;
 
-  // Stages of Execution can either be 'claim', 'swap', 'compound' and 'complete', in this order
-  let stageName: string = (await storage.get("currStage")) ?? "";
-
   if(!(await canRunInCurrentEpoch(provider, storage)))
     return { canExec: false, message: `Too Soon for Execution` };
+
+  // Stages of Execution can either be 'claim', 'swap', 'compound' and 'complete', in this order
+  let stageName: string = (await storage.get("currStage")) ?? "";
 
   // Setup Initial State for Automation if no Stage is taking place
   if(!stageName) {
