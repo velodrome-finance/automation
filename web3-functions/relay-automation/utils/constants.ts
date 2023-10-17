@@ -14,6 +14,10 @@ export const RELAY_REGISTRY_ADDRESS =
   "0x1C33BA7a5F4F2E80622d603A9E5e54294410f6d9";
 
 export const PROCESSING_COMPLETE: string = "complete";
+export const COMPOUND_STAGE: string = "compound";
+export const CLAIM_STAGE: string = "claim";
+export const SWAP_STAGE: string = "swap";
+
 export const ZERO_ADDRESS = constants.AddressZero;
 export const LP_SUGAR_ABI = lp_sugar_abi;
 

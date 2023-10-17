@@ -4,7 +4,7 @@ import { Contract } from "@ethersproject/contracts";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { PROCESSING_COMPLETE, TxData, VELO } from "../utils/constants";
+import { CLAIM_STAGE, COMPOUND_STAGE, PROCESSING_COMPLETE, SWAP_STAGE, TxData, VELO } from "../utils/constants";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
 
@@ -25,23 +25,23 @@ export async function processAutoCompounder(
 
     let calls: string[] = [];
     // Process Relay Rewards
-    if(stageName == "claim") {
+    if(stageName == CLAIM_STAGE) {
       calls = await getClaimCalls(relay, REWARDS_TO_FETCH, storage);
       if(calls.length == 1 && calls[0] == PROCESSING_COMPLETE) { // If no Claim calls left, next stage is Swap
-        stageName = "swap";
+        stageName = SWAP_STAGE;
         calls = [];
       }
     }
 
     // Process a Swap per Call
-    if(stageName == "swap") {// If no Swaps left, next call should be Compound
+    if(stageName == SWAP_STAGE) {// If no Swaps left, next call should be Compound
       const call = await encodeAutoCompounderSwap(relayAddr, factoryAddr, storage, provider);
       stageName = await storage.get("currStage"); // Check if Current Stage changed
 
       if(call)
         calls.push(call);
 
-      if(stageName == "compound") { // If all swaps were encoded, next stage will be "compound"
+      if(stageName == COMPOUND_STAGE) { // If all swaps were encoded, next stage will be "compound"
         calls.push(abi.encodeFunctionData("compound"));
         await storage.set("currStage", "complete"); // After compounding Relay is processed
       }
@@ -71,7 +71,7 @@ async function encodeAutoCompounderSwap(
 
     // Set current Stage and Initial Tokens Queue
     if(tokensQueue.length == 0) { // processing of swaps hasn't started
-      await storage.set("currStage", "swap");
+      await storage.set("currStage", SWAP_STAGE);
       tokensQueue = await factory.highLiquidityTokens();
       ({tokens: tokensQueue, balances: balancesQueue} = await filterHighLiqTokens(relayAddr, tokensQueue, provider));
     }
@@ -143,7 +143,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
       }
     }
   }
-  await storage.set("currStage", "compound"); // Next stage is compound encoding
+  await storage.set("currStage", COMPOUND_STAGE); // Next stage is compound encoding
   await storage.delete("balancesQueue");
   await storage.delete("tokensQueue");
   return call;

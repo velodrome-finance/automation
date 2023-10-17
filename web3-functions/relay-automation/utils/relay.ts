@@ -2,7 +2,7 @@
 import { Provider } from "@ethersproject/providers";
 import { Contract } from "@ethersproject/contracts";
 
-import { DAY, RELAY_REGISTRY_ADDRESS } from "./constants";
+import { CLAIM_STAGE, DAY, PROCESSING_COMPLETE, RELAY_REGISTRY_ADDRESS } from "./constants";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
 
 // Verifies if script can run in Current Epoch
@@ -89,19 +89,19 @@ export async function fetchStorageState(storage): Promise<[string, string, strin
 // Updates storage for next run at the end of Automation
 export async function updateStorage(stageName: string, currRelay: string, relaysQueue: string[], currFactory: string, factoriesQueue: string[], provider, storage) {
   // Set next Relay when last Relay's processing is complete
-  if(stageName == "complete") { // Relay has finished processing
+  if(stageName == PROCESSING_COMPLETE) { // Relay has finished processing
     if(relaysQueue.length != 0) {
       // Process next Relay
       currRelay = relaysQueue[0];
       relaysQueue = relaysQueue.slice(1);
-      await storage.set("currStage", "claim");
+      await storage.set("currStage", CLAIM_STAGE);
       await storage.set("currRelay", currRelay);
       await storage.set("relaysQueue", JSON.stringify(relaysQueue));
     } else if(factoriesQueue.length != 0) {
       // Process next Factory
       currFactory = factoriesQueue[0];
       factoriesQueue = factoriesQueue.slice(1);
-      await storage.set("currStage", "claim");
+      await storage.set("currStage", CLAIM_STAGE);
       await storage.set("currFactory", currFactory);
       await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
     } else {
