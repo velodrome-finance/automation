@@ -26,14 +26,14 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   let stageName: string = (await storage.get("currStage")) ?? "";
 
   // Setup Initial State for Automation if no Stage is taking place
-  if(!stageName) {
+  if(!stageName)
     try {
       stageName = "claim"; // Claiming of Rewards is the first stage of Execution
       [currRelay, relaysQueue, currFactory, factoriesQueue, isAutoCompounder] = await setUpInitialStorage(storage, provider);
     } catch (err) {
-      return { canExec: false, message: `Rpc call failed ${err}` };
+      return { canExec: false, message: `Storage Setup failed ${err}` };
     }
-  } else
+  else
     // Fetch current state of Execution if there is a Stage being processed
     [currRelay, currFactory, relaysQueue, factoriesQueue, isAutoCompounder] = await fetchStorageState(storage);
 
