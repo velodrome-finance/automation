@@ -143,7 +143,12 @@ export async function fetchQuote(
   // Split into chunks and get the route quotes...
   for (const routeChunk of routeChunks) {
     for (const route of routeChunk) {
-      const amountsOut = await router.getAmountsOut(amount, route);
+      let amountsOut;
+      try {
+        amountsOut = await router.getAmountsOut(amount, route);
+      } catch (err) {
+        amountsOut = [];
+      }
 
       // Ignore bad quotes...
       if (amountsOut && amountsOut.length >= 1) {
