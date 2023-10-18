@@ -11,10 +11,12 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 
+const REWARDS_TO_FETCH = 600;
+const MAX_REWARDS_CALLS = 3;
+
 // Fetches and claims all available Rewards
 export async function getClaimCalls(
   relay: Contract,
-  pairsLength: number,
   storage
 ): Promise<string[]> {
   const mTokenId = await relay.mTokenId();
@@ -24,15 +26,16 @@ export async function getClaimCalls(
   if(!offset)
     await storage.set("currStage", "claim");
 
-  if(offset == pairsLength) {
+  if(offset == REWARDS_TO_FETCH) {
       await storage.delete("offset");
       await storage.set("currStage", "swap");
       return [PROCESSING_COMPLETE];
   }
 
-  let rewards = await getRewards(mTokenId, relay.provider, offset, pairsLength, storage);
+  let rewards = await getRewards(mTokenId, relay.provider, offset, storage);
 
   // Claim Fees
+  // TODO: should limit the amount of claims per call
   let rewardAddrs: string[] = Object.keys(rewards.fee);
   if (rewardAddrs.length != 0)
     calls.push(
@@ -59,35 +62,42 @@ async function getRewards(
   venft: BigNumber,
   provider: Provider,
   startIndex: number,
-  pairsLength: number,
   storage,
-  chunkSize = 50
+  chunkSize = 100
 ) {
   const lpSugarContract: Contract = new Contract(
     LP_SUGAR_ADDRESS,
     LP_SUGAR_ABI,
     provider
   );
-
-  const endIndex = Math.min(startIndex + chunkSize, pairsLength);
-  const rewards: Reward[] = await lpSugarContract.rewards(
-    endIndex - startIndex,
-    startIndex,
-    venft
-  );
-
   const feeRewardInfo: RewardContractInfo = {};
   const bribeRewardInfo: RewardContractInfo = {};
-  // Separate rewards by Bribe and Fees
-  for (const reward of rewards) {
-    if (reward.fee != ZERO_ADDRESS)
-      feeRewardInfo[reward.fee] = (
-        feeRewardInfo[reward.fee] || []
-      ).concat(reward.token);
-    if (reward.bribe != ZERO_ADDRESS)
-      bribeRewardInfo[reward.bribe] = (
-        bribeRewardInfo[reward.bribe] || []
-      ).concat(reward.token);
+
+  let endIndex = 0;
+  let callCount = 0;
+
+  while(endIndex != REWARDS_TO_FETCH && callCount < MAX_REWARDS_CALLS) {
+    endIndex = Math.min(startIndex + chunkSize, REWARDS_TO_FETCH);
+    // Fetch Rewards available
+    const rewards: Reward[] = await lpSugarContract.rewards(
+      endIndex - startIndex,
+      startIndex,
+      venft
+    );
+    callCount++;
+
+    // Separate rewards by Bribe and Fees
+    for (const reward of rewards) {
+      if (reward.fee != ZERO_ADDRESS)
+        feeRewardInfo[reward.fee] = (
+          feeRewardInfo[reward.fee] || []
+        ).concat(reward.token);
+      if (reward.bribe != ZERO_ADDRESS)
+        bribeRewardInfo[reward.bribe] = (
+          bribeRewardInfo[reward.bribe] || []
+        ).concat(reward.token);
+    }
+    startIndex += chunkSize;
   }
   storage.set("offset", endIndex.toString()); // update offset for next run
   return { fee: feeRewardInfo, bribe: bribeRewardInfo };
@@ -97,7 +107,7 @@ async function getRewards(
 export async function getPools(
   provider: Provider,
   poolsLength: number,
-  chunkSize = 100
+  chunkSize = 75
 ) {
   const lpSugarContract: Contract = new Contract(
     LP_SUGAR_ADDRESS,

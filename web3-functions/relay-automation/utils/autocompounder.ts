@@ -8,7 +8,6 @@ import { CLAIM_STAGE, COMPOUND_STAGE, PROCESSING_COMPLETE, SWAP_STAGE, TxData, V
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
 
-const REWARDS_TO_FETCH = 600;
 const POOLS_TO_FETCH = 600;
 
 // Encode AutoCompounder calls, one per Execution
@@ -26,7 +25,7 @@ export async function processAutoCompounder(
     let calls: string[] = [];
     // Process Relay Rewards
     if(stageName == CLAIM_STAGE) {
-      calls = await getClaimCalls(relay, REWARDS_TO_FETCH, storage);
+      calls = await getClaimCalls(relay, storage);
       if(calls.length == 1 && calls[0] == PROCESSING_COMPLETE) { // If no Claim calls left, next stage is Swap
         stageName = SWAP_STAGE;
         calls = [];
@@ -110,8 +109,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
     await getPools(provider, POOLS_TO_FETCH)
   );
 
-  const relay = new Contract(relayAddr, compAbi, provider);
-  const abi = relay.interface;
+  const abi = new Contract(relayAddr, compAbi, provider).interface;
   let call: string = "";
   // Process One Swap per Execution
   const token = tokensQueue.shift();
