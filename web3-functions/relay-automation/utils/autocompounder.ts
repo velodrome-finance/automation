@@ -116,7 +116,6 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
   const bal = BigNumber.from(balancesQueue.shift());
 
   // Fetch best Swap quote
-  console.log("BEFORE FETCH QUOTE");
   let quote;
   if(token)
     quote = await fetchQuote(
@@ -129,7 +128,6 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
       bal,
       provider
     );
-  console.log("AFTER FETCH QUOTE");
 
   if (quote) {
     // If best quote was found, encode swap call
