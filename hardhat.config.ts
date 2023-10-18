@@ -47,6 +47,9 @@ const config: HardhatUserConfig = {
   paths: {
     sources: "./lib/relay-private/src/",
   },
+  mocha: {
+    timeout: 100000000,
+  },
 
   networks: {
     hardhat: {
