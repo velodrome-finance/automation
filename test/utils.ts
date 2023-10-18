@@ -133,8 +133,8 @@ export async function createAutoCompounder(
   await stopImpersonatingAccount(allowedManager);
 
   // Create Normal veNFT and deposit into managed
-  let amount = BigNumber.from(10).pow(18);
-  await velo.approve(escrow.address, amount.mul(10));
+  let amount = BigNumber.from(10).pow(19);
+  await velo.approve(escrow.address, amount);
   await escrow.createLock(amount, 4 * 365 * 24 * 60 * 60);
   let token: BigNumber = await escrow.tokenId();
   let voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
