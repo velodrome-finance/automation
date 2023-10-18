@@ -94,11 +94,11 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
   let call: string = "";
   // Process One Swap per Execution
   const token = tokensQueue.shift();
-  const bal = BigNumber.from(balancesQueue.shift());
 
   // Fetch best Swap quote
   let quote;
-  if(token)
+  if(token) {
+    const bal = BigNumber.from(balancesQueue.shift());
     quote = await fetchQuote(
       getRoutes(
         poolsGraph,
@@ -109,6 +109,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
       bal,
       provider
     );
+  }
 
   if (quote) {
     // If best quote was found, encode swap call
