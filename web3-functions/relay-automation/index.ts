@@ -4,9 +4,10 @@ import {
   Web3FunctionContext,
 } from "@gelatonetwork/web3-functions-sdk";
 
-import { TxData } from "./utils/constants";
-import { processAutoCompounder } from "./utils/autocompounder";
 import { canRunInCurrentEpoch, fetchStorageState, setUpInitialStorage, updateStorage } from "./utils/relay";
+import { processAutoCompounder } from "./utils/autocompounder";
+import { processAutoConverter } from "./utils/autoconverter";
+import { TxData } from "./utils/constants";
 
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { storage, multiChainProvider } = context;
@@ -42,8 +43,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   if(JSON.parse(isAutoCompounder)) {
     txData = await processAutoCompounder(currRelay, currFactory, stageName, storage, provider);
   } else {
-     // Process AutoConverter
-
+    txData = await processAutoConverter(currRelay, currFactory, stageName, storage, provider);
   }
 
   // Fetch current stage after call is processed
