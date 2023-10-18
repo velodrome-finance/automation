@@ -85,23 +85,6 @@ async function encodeAutoCompounderSwap(
     return await encodeSwapFromTokens(relayAddr, tokensQueue, balancesQueue, storage, provider);
 }
 
-async function filterHighLiqTokens(relayAddr: string, highLiqTokens: string[], provider: Provider) {
-    let tokensQueue: string[] = [];
-    let balancesQueue: string[] = [];
-    for(const token of highLiqTokens) {
-      const bal: BigNumber = await new Contract(
-        token,
-        ["function balanceOf(address) view returns (uint256)"],
-        provider
-      ).balanceOf(relayAddr);
-      if(!bal.isZero()) {
-          tokensQueue.push(token);
-          balancesQueue.push(bal.toString());
-      }
-    }
-    return {tokens: tokensQueue, balances: balancesQueue};
-}
-
 // TODO: If not for Compounding this could be on relay.ts
 // From a Relay Address and a list of Tokens, encode a swap per call
 async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], balancesQueue: string[], storage, provider: Provider): Promise<string> {
@@ -148,5 +131,22 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
   await storage.delete("balancesQueue");
   await storage.delete("tokensQueue");
   return call;
+}
+
+async function filterHighLiqTokens(relayAddr: string, highLiqTokens: string[], provider: Provider) {
+    let tokensQueue: string[] = [];
+    let balancesQueue: string[] = [];
+    for(const token of highLiqTokens) {
+      const bal: BigNumber = await new Contract(
+        token,
+        ["function balanceOf(address) view returns (uint256)"],
+        provider
+      ).balanceOf(relayAddr);
+      if(!bal.isZero()) {
+          tokensQueue.push(token);
+          balancesQueue.push(bal.toString());
+      }
+    }
+    return {tokens: tokensQueue, balances: balancesQueue};
 }
 
