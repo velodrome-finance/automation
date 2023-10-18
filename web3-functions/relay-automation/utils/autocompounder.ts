@@ -112,23 +112,25 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
 
   const relay = new Contract(relayAddr, compAbi, provider);
   const abi = relay.interface;
-  let call = "";
+  let call: string = "";
   // Process One Swap per Execution
-  const token = tokensQueue[0];
-  const bal = BigNumber.from(balancesQueue[0]);
+  const token = tokensQueue.shift();
+  const bal = BigNumber.from(balancesQueue.shift());
 
   // Fetch best Swap quote
   console.log("BEFORE FETCH QUOTE");
-  const quote = await fetchQuote(
-    getRoutes(
-      poolsGraph,
-      poolsByAddress,
-      token.toLowerCase(),
-      VELO.toLowerCase()
-    ),
-    bal,
-    provider
-  );
+  let quote;
+  if(token)
+    quote = await fetchQuote(
+      getRoutes(
+        poolsGraph,
+        poolsByAddress,
+        token.toLowerCase(),
+        VELO.toLowerCase()
+      ),
+      bal,
+      provider
+    );
   console.log("AFTER FETCH QUOTE");
 
   if (quote) {
@@ -140,8 +142,6 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
     ]);
 
     // update queues
-    tokensQueue = tokensQueue.slice(1);
-    balancesQueue = balancesQueue.slice(1);
     if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
       await storage.set("balancesQueue", JSON.stringify(balancesQueue));
       await storage.set("tokensQueue", JSON.stringify(tokensQueue));
