@@ -2,6 +2,7 @@ import { BigNumber } from "ethers";
 import hre from "hardhat";
 const { ethers } = hre;
 
+import { hexZeroPad } from "ethers/lib/utils";
 import { Libraries } from "hardhat/types";
 import { AbiCoder } from "@ethersproject/abi";
 import { Contract } from "@ethersproject/contracts";
@@ -16,19 +17,17 @@ import {
   stopImpersonatingAccount,
 } from "@nomicfoundation/hardhat-network-helpers";
 
-import {
-  Web3FunctionExecSuccess,
-} from "@gelatonetwork/web3-functions-sdk";
+import { Web3FunctionExecSuccess } from "@gelatonetwork/web3-functions-sdk";
 
 export type BalanceSlot = {
   address: string;
   slot: number;
   decimals: number;
-}
+};
 
 export type StorageList = {
   [key: string]: BalanceSlot;
-}
+};
 
 // Storage slots for the balanceOf mapping
 export const storageSlots: StorageList = {
@@ -96,7 +95,13 @@ export async function setBalanceOf(
     [userAddr, slot] // key, slot
   );
   // Set balance
-  await setStorageAt(address, storageIndex.toString(), BigNumber.from(balance).mul(BigNumber.from(10).pow(BigNumber.from(decimals))));
+  await setStorageAt(
+    address,
+    storageIndex.toString(),
+    BigNumber.from(balance).mul(
+      BigNumber.from(10).pow(BigNumber.from(decimals))
+    )
+  );
 }
 
 export async function seedRelayWithBalances(
@@ -104,9 +109,9 @@ export async function seedRelayWithBalances(
   storageSlots: StorageList
 ) {
   for (let key in storageSlots) {
-    const balances: {[id: string]: number} = {
-      "weth": 10,
-      "velo": 100_000,
+    const balances: { [id: string]: number } = {
+      weth: 10,
+      velo: 100_000,
     };
 
     const bal = balances[key] || 10_000;
@@ -149,6 +154,46 @@ export async function createAutoCompounder(
     mTokenId,
     "AutoCompounder",
     abiCoder.encode(["bytes"], [0])
+  );
+
+  return mTokenId;
+}
+
+export async function createAutoConverter(
+  autoConverterFactory: Contract,
+  usdc: Contract,
+  velo: Contract,
+  escrow: Contract,
+  owner: SignerWithAddress
+) {
+  // Impersonating manager
+  let allowedManager = await escrow.allowedManager();
+  await setBalance(allowedManager, 100e18);
+  await impersonateAccount(allowedManager);
+  let manager = await ethers.getSigner(allowedManager);
+
+  // Creating Managed Lock
+  let tx = await escrow.populateTransaction.createManagedLockFor(owner.address);
+  await manager.sendTransaction({ ...tx, from: allowedManager });
+  let mTokenId = await escrow.tokenId();
+  await stopImpersonatingAccount(allowedManager);
+
+  // Create Normal veNFT and deposit into managed
+  let amount = BigNumber.from(10).pow(19);
+  await velo.approve(escrow.address, amount);
+  await escrow.createLock(amount, 4 * 365 * 24 * 60 * 60);
+  let token: BigNumber = await escrow.tokenId();
+  let voter: IVoter = await ethers.getContractAt("IVoter", jsonOutput.Voter);
+  await voter.depositManaged(token, mTokenId);
+
+  await escrow.approve(autoConverterFactory.address, mTokenId);
+
+  // Create AutoConverter
+  await autoConverterFactory.createRelay(
+    owner.address,
+    mTokenId,
+    "AutoConverter",
+    hexZeroPad(usdc.address, 32)
   );
 
   return mTokenId;
