@@ -8,8 +8,8 @@ import { CLAIM_STAGE, COMPOUND_STAGE, PROCESSING_COMPLETE, SWAP_STAGE, TxData, V
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
 
-const REWARDS_TO_FETCH = 150;
-const POOLS_TO_FETCH = 150;
+const REWARDS_TO_FETCH = 600;
+const POOLS_TO_FETCH = 600;
 
 // Encode AutoCompounder calls, one per Execution
 export async function processAutoCompounder(
@@ -108,45 +108,44 @@ async function filterHighLiqTokens(relayAddr: string, highLiqTokens: string[], p
 async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], balancesQueue: string[], storage, provider: Provider): Promise<string> {
   const [poolsGraph, poolsByAddress] = buildGraph(
     await getPools(provider, POOLS_TO_FETCH)
-  ); // TODO: Find right value, was using 600, 0
+  );
 
   const relay = new Contract(relayAddr, compAbi, provider);
   const abi = relay.interface;
   let call = "";
   // Process One Swap per Execution
-  for(let i = 0; i < tokensQueue.length; i++) {
+  const token = tokensQueue[0];
+  const bal = BigNumber.from(balancesQueue[0]);
 
-    const token = tokensQueue[i];
-    const bal = BigNumber.from(balancesQueue[i]);
+  // Fetch best Swap quote
+  console.log("BEFORE FETCH QUOTE");
+  const quote = await fetchQuote(
+    getRoutes(
+      poolsGraph,
+      poolsByAddress,
+      token.toLowerCase(),
+      VELO.toLowerCase()
+    ),
+    bal,
+    provider
+  );
+  console.log("AFTER FETCH QUOTE");
 
-    // Fetch best Swap quote
-    const quote = await fetchQuote(
-      getRoutes(
-        poolsGraph,
-        poolsByAddress,
-        token.toLowerCase(),
-        VELO.toLowerCase()
-      ),
-      bal,
-      provider
-    );
+  if (quote) {
+    // If best quote was found, encode swap call
+    call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
+      token,
+      500, // TODO: Find desired slippage
+      quote
+    ]);
 
-    if (quote) {
-      // If best quote was found, encode swap call
-      call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
-        token,
-        500, // TODO: Find desired slippage
-        quote
-      ]);
-
-      // update queues
-      tokensQueue = tokensQueue.slice(i + 1);
-      balancesQueue = balancesQueue.slice(i + 1);
-      if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
-        await storage.set("balancesQueue", JSON.stringify(balancesQueue));
-        await storage.set("tokensQueue", JSON.stringify(tokensQueue));
-        return call;
-      }
+    // update queues
+    tokensQueue = tokensQueue.slice(1);
+    balancesQueue = balancesQueue.slice(1);
+    if(tokensQueue.length != 0) { // if there are still tokens in queue, continue
+      await storage.set("balancesQueue", JSON.stringify(balancesQueue));
+      await storage.set("tokensQueue", JSON.stringify(tokensQueue));
+      return call;
     }
   }
   await storage.set("currStage", COMPOUND_STAGE); // Next stage is compound encoding
