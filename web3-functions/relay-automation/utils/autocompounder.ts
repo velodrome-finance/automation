@@ -8,8 +8,6 @@ import { CLAIM_STAGE, COMPOUND_STAGE, PROCESSING_COMPLETE, SWAP_STAGE, TxData, V
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
 
-const POOLS_TO_FETCH = 600;
-
 // Encode AutoCompounder calls, one per Execution
 export async function processAutoCompounder(
     relayAddr: string,
@@ -89,7 +87,7 @@ async function encodeAutoCompounderSwap(
 // From a Relay Address and a list of Tokens, encode a swap per call
 async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], balancesQueue: string[], storage, provider: Provider): Promise<string> {
   const [poolsGraph, poolsByAddress] = buildGraph(
-    await getPools(provider, POOLS_TO_FETCH)
+    await getPools(provider)
   );
 
   const abi = new Contract(relayAddr, compAbi, provider).interface;

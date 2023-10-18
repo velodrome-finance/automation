@@ -13,6 +13,7 @@ import { BigNumber } from "@ethersproject/bignumber";
 
 const REWARDS_TO_FETCH = 600;
 const MAX_REWARDS_CALLS = 3;
+const POOLS_TO_FETCH = 600;
 
 // Fetches and claims all available Rewards
 export async function getClaimCalls(
@@ -106,7 +107,6 @@ async function getRewards(
 // Gets All pools
 export async function getPools(
   provider: Provider,
-  poolsLength: number,
   chunkSize = 75
 ) {
   const lpSugarContract: Contract = new Contract(
@@ -116,8 +116,8 @@ export async function getPools(
   );
   const allPools: any[] = [];
   const promises: Promise<void>[] = [];
-  for (let startIndex = 0; startIndex < poolsLength; startIndex += chunkSize) {
-    const endIndex = Math.min(startIndex + chunkSize, poolsLength);
+  for (let startIndex = 0; startIndex < POOLS_TO_FETCH; startIndex += chunkSize) {
+    const endIndex = Math.min(startIndex + chunkSize, POOLS_TO_FETCH);
     promises.push(
       // eslint-disable-next-line no-async-promise-executor
       new Promise(async (resolve, reject) => {
