@@ -21,7 +21,7 @@ import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contract
 import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
 import { AutoCompounderFactory } from "../typechain/relay-private/src/autoCompounder";
 import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
-import lpSugarAbi from "../web3-functions/relay/abis/lp_sugar.json";
+import lpSugarAbi from "../web3-functions/relay-automation/abis/lp_sugar.json";
 import { Registry } from "../typechain/relay-private/src";
 
 import {
@@ -56,11 +56,11 @@ describe("Automation Script Tests", function () {
   let velo: IERC20;
   let relays: string[];
   let tokenNames: string[];
-  let tokensToCompound: Contract[] = [];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
   let mTokens: BigNumber[] = [];
   let relayFactoryRegistry: Registry;
+  let tokensToCompound: Contract[] = [];
 
   before(async function () {
     await deployments.fixture();

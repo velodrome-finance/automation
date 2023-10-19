@@ -27,7 +27,7 @@ import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contract
 import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
 import { AutoConverterFactory } from "../typechain/relay-private/src/autoconverter";
 import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
-import lpSugarAbi from "../web3-functions/relay/abis/lp_sugar.json";
+import lpSugarAbi from "../web3-functions/relay-automation/abis/lp_sugar.json";
 import { Registry } from "../typechain/relay-private/src";
 
 import {
