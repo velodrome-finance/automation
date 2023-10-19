@@ -16,7 +16,13 @@ import {
 } from "@nomicfoundation/hardhat-network-helpers";
 
 import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
-import { createAutoCompounder, logW3fRunStats, seedRelayWithBalances, setBalanceOf, storageSlots } from "./utils";
+import {
+  seedRelayWithBalances,
+  createAutoCompounder,
+  logW3fRunStats,
+  setBalanceOf,
+  storageSlots,
+} from "./utils";
 import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVotingEscrow";
 import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
 import { AutoCompounderFactory } from "../typechain/relay-private/src/autoCompounder";
@@ -32,16 +38,24 @@ import {
 } from "../web3-functions/relay-automation/utils/constants";
 
 async function logRelayBalances(relays, tokensToCompound, mTokens, escrow) {
-    for (const i in relays) {
-      console.log("========================= // RESULTS // =========================");
-      console.log(`Current Relay: ${relays[i]}`);
-      for (const token of tokensToCompound) {
-        console.log(`TOKEN: ${token.address}, Amount: ${await token.balanceOf(relays[i])}`)
-      }
-      console.log("-----------------------------------------------------------------");
-      console.log(`VE Amount: ${await escrow.balanceOfNFT(mTokens[i])}`);
+  for (const i in relays) {
+    console.log(
+      "========================= // RESULTS // ========================="
+    );
+    console.log(`Current Relay: ${relays[i]}`);
+    for (const token of tokensToCompound) {
+      console.log(
+        `TOKEN: ${token.address}, Amount: ${await token.balanceOf(relays[i])}`
+      );
     }
-    console.log("=========================-//-=======-//-=========================");
+    console.log(
+      "-----------------------------------------------------------------"
+    );
+    console.log(`VE Amount: ${await escrow.balanceOfNFT(mTokens[i])}`);
+  }
+  console.log(
+    "=========================-//-=======-//-========================="
+  );
 }
 
 describe("AutoCompounder Automation Script Tests", function () {
@@ -76,11 +90,17 @@ describe("AutoCompounder Automation Script Tests", function () {
       KEEPER_REGISTRY_ADDRESS
     );
     const factories: string[] = await relayFactoryRegistry.getAll();
-    autoCompounderFactory =
-      await ethers.getContractAt("AutoCompounderFactory", factories[0]);
+    autoCompounderFactory = await ethers.getContractAt(
+      "AutoCompounderFactory",
+      factories[0]
+    );
 
     tokenNames = ["dai", "usdc", "weth", "velo"]; // Tokens to be Compounded while testing Relays
-    tokensToCompound = await Promise.all(tokenNames.map(name => ethers.getContractAt(erc20Abi, storageSlots[name].address)));
+    tokensToCompound = await Promise.all(
+      tokenNames.map((name) =>
+        ethers.getContractAt(erc20Abi, storageSlots[name].address)
+      )
+    );
     [dai, usdc, weth, velo] = tokensToCompound;
 
     escrow = await ethers.getContractAt(
@@ -111,7 +131,8 @@ describe("AutoCompounder Automation Script Tests", function () {
 
     // Fetch all the AutoCompounders and seed them with Tokens
     relays = await autoCompounderFactory.relays();
-    for (const relay of relays.slice(1)) { // Only seed created Relays
+    for (const relay of relays.slice(1)) {
+      // Only seed created Relays
       await seedRelayWithBalances(relay, storageSlots);
     }
 
@@ -119,7 +140,7 @@ describe("AutoCompounder Automation Script Tests", function () {
     let timestamp = await time.latest();
     let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + HOUR;
     let newTimestamp =
-      endOfFirstHour >= timestamp ? endOfFirstHour : (endOfFirstHour + 6 * DAY); // cannot exceed current epoch
+      endOfFirstHour >= timestamp ? endOfFirstHour : endOfFirstHour + 6 * DAY; // cannot exceed current epoch
     time.increaseTo(newTimestamp);
 
     relayW3f = w3f.get("relay-automation");
@@ -132,14 +153,17 @@ describe("AutoCompounder Automation Script Tests", function () {
       let oldBal = await escrow.balanceOfNFT(mTokens[i]);
       oldBalances.push(oldBal);
 
-      if(!Number(i)) // ignore setup verification for first relay as no balances are being sent to it
+      if (!Number(i))
+        // ignore setup verification for first relay as no balances are being sent to it
         continue;
       expect(oldBal).to.equal(BigNumber.from(10).pow(19));
       for (const j in tokensToCompound) {
         const token = tokensToCompound[j];
 
         const bal = token === weth ? 10 : token === velo ? 100_000 : 10_000;
-        const decimals = BigNumber.from(10).pow(storageSlots[tokenNames[j]].decimals);
+        const decimals = BigNumber.from(10).pow(
+          storageSlots[tokenNames[j]].decimals
+        );
         const expectedBalance = BigNumber.from(bal).mul(decimals);
 
         expect(await token.balanceOf(relays[i])).eq(expectedBalance);
@@ -151,36 +175,42 @@ describe("AutoCompounder Automation Script Tests", function () {
       currRelay: relays[0],
       relaysQueue: JSON.stringify(relays.slice(1)),
       currFactory: autoCompounderFactory.address,
-      factoriesQueue: '[]',
-      isAutoCompounder: 'true',
-      currStage: 'claim',
-      offset: '0'
+      factoriesQueue: "[]",
+      isAutoCompounder: "true",
+      currStage: "claim",
+      offset: "0",
     };
     let currentStage = "claim";
     let result, storageAfter;
     let numberOfRuns = 0;
     let rpcCalls = 0;
     // Execute script until the automation is finished
-    while(!storageBefore.lastRunTimestamp) {
-        // Executes Script
-        let run = await relayW3f.run({storage: storageBefore});
-        ({result, storage: storageAfter} = run);
-        if(storageAfter.storage.currStage != currentStage) { // If state changes, Log Relay Balances
-          await logRelayBalances([storageBefore.currRelay], tokensToCompound, mTokens, escrow);
-          currentStage = storageAfter.storage.currStage ?? "";
-        }
+    while (!storageBefore.lastRunTimestamp) {
+      // Executes Script
+      let run = await relayW3f.run({ storage: storageBefore });
+      ({ result, storage: storageAfter } = run);
+      if (storageAfter.storage.currStage != currentStage) {
+        // If state changes, Log Relay Balances
+        await logRelayBalances(
+          [storageBefore.currRelay],
+          tokensToCompound,
+          mTokens,
+          escrow
+        );
+        currentStage = storageAfter.storage.currStage ?? "";
+      }
 
-        // Logging Info
-        rpcCalls += run.rpcCalls.total;
-        numberOfRuns += 1;
-        logW3fRunStats(run);
+      // Logging Info
+      rpcCalls += run.rpcCalls.total;
+      numberOfRuns += 1;
+      logW3fRunStats(run);
 
-        // Sending Generated Transactions
-        expect(result.canExec).to.equal(true);
-        for (let call of result.callData) {
-          await owner.sendTransaction({ to: call.to, data: call.data });
-        }
-        storageBefore = storageAfter.storage;
+      // Sending Generated Transactions
+      expect(result.canExec).to.equal(true);
+      for (let call of result.callData) {
+        await owner.sendTransaction({ to: call.to, data: call.data });
+      }
+      storageBefore = storageAfter.storage;
     }
 
     // All balances were Swapped to VELO and compounded correctly for all Relays
@@ -191,20 +221,22 @@ describe("AutoCompounder Automation Script Tests", function () {
       }
       expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
     }
-
   });
   it("Loads storage with Relays to Process", async () => {
     let storageBefore = relayW3f.getStorage();
     // First Run With Empty Storage
-    let run = await relayW3f.run({storage: storageBefore});
-    let {result, storage: storageAfter} = run;
+    let run = await relayW3f.run({ storage: storageBefore });
+    let { result, storage: storageAfter } = run;
     logW3fRunStats(run);
     expect(result.canExec).to.equal(true);
-    expect(JSON.parse(storageAfter.storage["relaysQueue"] as string).length).to.equal(RELAYS_TO_TEST); // The relay being processed is the one already on chain
+    expect(
+      JSON.parse(storageAfter.storage["relaysQueue"] as string).length
+    ).to.equal(RELAYS_TO_TEST); // The relay being processed is the one already on chain
   });
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
-    const endOfFirstHourNextEpoch = (timestamp - (timestamp % (7 * DAY)) + HOUR) + 7 * DAY;
+    const endOfFirstHourNextEpoch =
+      timestamp - (timestamp % (7 * DAY)) + HOUR + 7 * DAY;
 
     let storageBefore = relayW3f.getStorage();
     // Setting Last run as the End of First day of Current Epoch

@@ -118,27 +118,24 @@ export function getRoutes(
     paths.push(...mappedPathSets);
   });
 
-  if(paths.length > MAX_ROUTES)
-      paths = filterPaths(paths, MAX_ROUTES);
+  if (paths.length > MAX_ROUTES) paths = filterPaths(paths, MAX_ROUTES);
   return paths;
 }
 
 // Filters out 2 Hop Paths until MaxLength is not surpassed
 function filterPaths(paths: Route[][], maxLength: number): Route[][] {
-    const itemsToRemove: number = paths.length - maxLength;
-    let filteredArray: Route[][] = [];
-    let count = 0;
-    for(let i = 0; i < paths.length; i++) {
-        const path: Route[] = paths[i];
-        if(count < itemsToRemove) {
-          if(path.length == 1)
-              filteredArray.push(path);
-          else // Skip tokens with more than 1 hop
-              count++;
-        } else
-          filteredArray.push(path);
-    }
-    return filteredArray;
+  const itemsToRemove: number = paths.length - maxLength;
+  let filteredArray: Route[][] = [];
+  let count = 0;
+  for (let i = 0; i < paths.length; i++) {
+    const path: Route[] = paths[i];
+    if (count < itemsToRemove) {
+      if (path.length == 1) filteredArray.push(path);
+      // Skip tokens with more than 1 hop
+      else count++;
+    } else filteredArray.push(path);
+  }
+  return filteredArray;
 }
 
 /**

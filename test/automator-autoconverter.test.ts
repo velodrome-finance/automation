@@ -17,16 +17,16 @@ import {
 
 import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
 import {
+  seedRelayWithBalances,
   createAutoConverter,
   logW3fRunStats,
-  seedRelayWithBalances,
   setBalanceOf,
   storageSlots,
 } from "./utils";
 import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVotingEscrow";
 import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
-import { AutoConverterFactory } from "../typechain/relay-private/src/autoconverter";
 import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
+import { AutoConverterFactory } from "../typechain/relay-private/src/autoconverter";
 import { Registry } from "../typechain/relay-private/src";
 
 import {
@@ -91,8 +91,10 @@ describe("AutoConverter Automation Script Tests", function () {
       KEEPER_REGISTRY_ADDRESS
     );
     const factories: string[] = await relayFactoryRegistry.getAll();
-    autoConverterFactory =
-      await ethers.getContractAt("AutoConverterFactory", factories[1]);
+    autoConverterFactory = await ethers.getContractAt(
+      "AutoConverterFactory",
+      factories[1]
+    );
 
     tokenNames = ["dai", "weth", "op"]; // Tokens to be Converted while testing Relays
     tokensToConvert = await Promise.all(
@@ -147,7 +149,7 @@ describe("AutoConverter Automation Script Tests", function () {
     let timestamp = await time.latest();
     let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + HOUR;
     let newTimestamp =
-      endOfFirstHour >= timestamp ? endOfFirstHour : (endOfFirstHour + 6 * DAY); // cannot exceed current epoch
+      endOfFirstHour >= timestamp ? endOfFirstHour : endOfFirstHour + 6 * DAY; // cannot exceed current epoch
     time.increaseTo(newTimestamp);
 
     relayW3f = w3f.get("relay-automation");
@@ -182,10 +184,10 @@ describe("AutoConverter Automation Script Tests", function () {
       currRelay: relays[0],
       relaysQueue: JSON.stringify(relays.slice(1)),
       currFactory: autoConverterFactory.address,
-      factoriesQueue: '[]',
-      isAutoCompounder: 'false',
-      currStage: 'claim',
-      offset: '0'
+      factoriesQueue: "[]",
+      isAutoCompounder: "false",
+      currStage: "claim",
+      offset: "0",
     };
     let currentStage = "claim";
     let result, storageAfter;
@@ -242,7 +244,7 @@ describe("AutoConverter Automation Script Tests", function () {
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
     const endOfFirstHourNextEpoch =
-      (timestamp - (timestamp % (7 * DAY)) + HOUR) + 7 * DAY;
+      timestamp - (timestamp % (7 * DAY)) + HOUR + 7 * DAY;
 
     let storageBefore = relayW3f.getStorage();
     // Setting Last run as the End of First day of Current Epoch

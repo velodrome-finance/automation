@@ -3,17 +3,33 @@ import { Provider } from "@ethersproject/providers";
 import { Contract } from "@ethersproject/contracts";
 
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
-import { CLAIM_STAGE, DAY, HOUR, PROCESSING_COMPLETE, RELAY_REGISTRY_ADDRESS } from "./constants";
+import {
+  RELAY_REGISTRY_ADDRESS,
+  PROCESSING_COMPLETE,
+  CLAIM_STAGE,
+  HOUR,
+  DAY,
+} from "./constants";
 
 // Verifies if script can run in Current Epoch
-export async function canRunInCurrentEpoch(provider, storage): Promise<boolean> {
+export async function canRunInCurrentEpoch(
+  provider,
+  storage
+): Promise<boolean> {
   const timestamp = (await provider.getBlock("latest")).timestamp;
   const startOfCurrentEpoch: number = timestamp - (timestamp % (7 * DAY));
-  const keeperLastRun: number = Number((await storage.get("keeperLastRun")) ?? "");
-  const startOfLastRunEpoch: number = keeperLastRun - (keeperLastRun % (7 * DAY));
+  const keeperLastRun: number = Number(
+    (await storage.get("keeperLastRun")) ?? ""
+  );
+  const startOfLastRunEpoch: number =
+    keeperLastRun - (keeperLastRun % (7 * DAY));
 
   // Can only run Once per Epoch and only after its First Hour
-  return (!keeperLastRun || (startOfCurrentEpoch != startOfLastRunEpoch && timestamp > startOfCurrentEpoch + HOUR));
+  return (
+    !keeperLastRun ||
+    (startOfCurrentEpoch != startOfLastRunEpoch &&
+      timestamp > startOfCurrentEpoch + HOUR)
+  );
 }
 
 // Retrieve all Relay Factories from the Registry
@@ -27,16 +43,16 @@ async function getFactoriesFromRegistry(
     provider
   );
 
-  return (await relayFactoryRegistry.getAll());
+  return await relayFactoryRegistry.getAll();
 }
 
 // Sets up the initial Storage to process a Relay
-export async function setUpInitialStorage(
-  storage,
-  provider: Provider
-) {
+export async function setUpInitialStorage(storage, provider: Provider) {
   // Get All Factories from Registry
-  let factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
+  let factoriesQueue = await getFactoriesFromRegistry(
+    RELAY_REGISTRY_ADDRESS,
+    provider
+  );
   const currFactory = factoriesQueue[0] ?? "";
   factoriesQueue = factoriesQueue.slice(1);
   let factory = new Contract(
@@ -66,11 +82,19 @@ export async function setUpInitialStorage(
   await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
   await storage.set("isAutoCompounder", isAutoCompounder);
 
-  return [currRelay, relaysQueue, currFactory, factoriesQueue, isAutoCompounder]
+  return [
+    currRelay,
+    relaysQueue,
+    currFactory,
+    factoriesQueue,
+    isAutoCompounder,
+  ];
 }
 
 // Retrieves the current state of execution from Storage
-export async function fetchStorageState(storage): Promise<[string, string, string[], string[], string]> {
+export async function fetchStorageState(
+  storage
+): Promise<[string, string, string[], string[], string]> {
   const currRelay: string = (await storage.get("currRelay")) ?? "";
   const currFactory: string = (await storage.get("currFactory")) ?? "";
 
@@ -80,23 +104,39 @@ export async function fetchStorageState(storage): Promise<[string, string, strin
   queue = (await storage.get("factoriesQueue")) ?? ""; // fetch factories to process
   const factoriesQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
 
-  const isAutoCompounder: string = (await storage.get("isAutoCompounder")) ?? "";
+  const isAutoCompounder: string =
+    (await storage.get("isAutoCompounder")) ?? "";
 
-  return [currRelay, currFactory, relaysQueue, factoriesQueue, isAutoCompounder]
+  return [
+    currRelay,
+    currFactory,
+    relaysQueue,
+    factoriesQueue,
+    isAutoCompounder,
+  ];
 }
 
 // Updates storage for next run at the end of Automation
-export async function updateStorage(stageName: string, currRelay: string, relaysQueue: string[], currFactory: string, factoriesQueue: string[], provider, storage) {
+export async function updateStorage(
+  stageName: string,
+  currRelay: string,
+  relaysQueue: string[],
+  currFactory: string,
+  factoriesQueue: string[],
+  provider,
+  storage
+) {
   // Set next Relay when last Relay's processing is complete
-  if(stageName == PROCESSING_COMPLETE) { // Relay has finished processing
-    if(relaysQueue.length != 0) {
+  if (stageName == PROCESSING_COMPLETE) {
+    // Relay has finished processing
+    if (relaysQueue.length != 0) {
       // Process next Relay
       currRelay = relaysQueue[0];
       relaysQueue = relaysQueue.slice(1);
       await storage.set("currStage", CLAIM_STAGE);
       await storage.set("currRelay", currRelay);
       await storage.set("relaysQueue", JSON.stringify(relaysQueue));
-    } else if(factoriesQueue.length != 0) {
+    } else if (factoriesQueue.length != 0) {
       // Process next Factory
       currFactory = factoriesQueue[0];
       factoriesQueue = factoriesQueue.slice(1);
@@ -118,4 +158,3 @@ export async function updateStorage(stageName: string, currRelay: string, relays
     }
   }
 }
-
