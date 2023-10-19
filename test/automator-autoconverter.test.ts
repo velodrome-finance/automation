@@ -37,7 +37,7 @@ import {
   DAY,
 } from "../web3-functions/relay-automation/utils/constants";
 
-async function logRelayBalances(relays, tokensToConvert, mTokens, escrow) {
+async function logRelayBalances(relays, tokensToConvert, usdc) {
   for (const i in relays) {
     console.log(
       "========================= // RESULTS // ========================="
@@ -51,7 +51,7 @@ async function logRelayBalances(relays, tokensToConvert, mTokens, escrow) {
     console.log(
       "-----------------------------------------------------------------"
     );
-    console.log(`VE Amount: ${await escrow.balanceOfNFT(mTokens[i])}`);
+    console.log(`USDC Amount: ${await usdc.balanceOf(relays[i])}`);
   }
   console.log(
     "=========================-//-=======-//-========================="
@@ -63,17 +63,19 @@ describe("Automation Script Tests", function () {
   let owner: SignerWithAddress;
   const RELAYS_TO_TEST = 1;
 
+  let op: IERC20;
   let dai: IERC20;
   let usdc: IERC20;
   let weth: IERC20;
   let velo: IERC20;
   let relays: string[];
   let tokenNames: string[];
-  let tokensToConvert: Contract[] = [];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
   let mTokens: BigNumber[] = [];
   let relayFactoryRegistry: Registry;
+  let tokensToConvert: Contract[] = [];
+  let autoConverterFactory: AutoConverterFactory;
 
   before(async function () {
     await deployments.fixture();
@@ -89,16 +91,18 @@ describe("Automation Script Tests", function () {
       KEEPER_REGISTRY_ADDRESS
     );
     const factories: string[] = await relayFactoryRegistry.getAll();
-    const autoConverterFactory: AutoConverterFactory =
+    autoConverterFactory =
       await ethers.getContractAt("AutoConverterFactory", factories[1]);
 
-    tokenNames = ["dai", "usdc", "weth", "velo"]; // Tokens to be Converted while testing Relays
+    tokenNames = ["dai", "weth", "op"]; // Tokens to be Converted while testing Relays
     tokensToConvert = await Promise.all(
       tokenNames.map((name) =>
         ethers.getContractAt(erc20Abi, storageSlots[name].address)
       )
     );
-    [dai, usdc, weth, velo] = tokensToConvert;
+    [dai, weth, op] = tokensToConvert;
+    usdc = await ethers.getContractAt(erc20Abi, storageSlots["usdc"].address);
+    velo = await ethers.getContractAt(erc20Abi, storageSlots["velo"].address);
 
     escrow = await ethers.getContractAt(
       "IVotingEscrow",
@@ -153,15 +157,15 @@ describe("Automation Script Tests", function () {
   it("Test Automator Flow", async () => {
     // All balances were minted correctly for all Relays
     let oldBalances = [];
-    await logRelayBalances(relays, tokensToConvert, mTokens, escrow);
+    await logRelayBalances(relays, tokensToConvert, usdc);
     for (const i in relays) {
-      let oldBal = await escrow.balanceOfNFT(mTokens[i]);
+      let oldBal = await usdc.balanceOf(relays[i]);
       oldBalances.push(oldBal);
 
       if (!Number(i))
         // ignore setup verification for first relay as no balances are being sent to it
         continue;
-      expect(oldBal).to.equal(BigNumber.from(10).pow(19));
+
       for (const j in tokensToConvert) {
         const token = tokensToConvert[j];
 
@@ -190,8 +194,7 @@ describe("Automation Script Tests", function () {
         await logRelayBalances(
           [storageBefore.currRelay],
           tokensToConvert,
-          mTokens,
-          escrow
+          usdc
         );
         currentStage = storageAfter.storage.currStage ?? "";
       }
@@ -206,20 +209,17 @@ describe("Automation Script Tests", function () {
       for (let call of result.callData) {
         await owner.sendTransaction({ to: call.to, data: call.data });
       }
+      console.log(storageBefore);
       storageBefore = storageAfter.storage;
     }
 
     // All balances were Swapped to USDC correctly for all Relays
-    await logRelayBalances(relays, tokensToConvert, mTokens, escrow);
+    await logRelayBalances(relays, tokensToConvert, usdc);
     for (const i in relays) {
       for (const token of tokensToConvert) {
-        if (token !== usdc.address) {
-          expect(await token.balanceOf(relays[i])).to.equal(0);
-        } else {
-          expect(await token.balanceOf(relays[i])).greaterThan(0);
-        }
+        expect(await token.balanceOf(relays[i])).to.equal(0);
       }
-      expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
+      expect(await usdc.balanceOf(relays[i])).to.above(oldBalances[i]);
     }
   });
   it("Loads storage with Relays to Process", async () => {
