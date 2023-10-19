@@ -179,7 +179,16 @@ describe("Automation Script Tests", function () {
       }
     }
 
-    let storageBefore = relayW3f.getStorage();
+    // Hardcoding Storage for this test to ignore AutoCompounder Factory
+    let storageBefore = {
+      currRelay: relays[0],
+      relaysQueue: JSON.stringify(relays.slice(1)),
+      currFactory: autoConverterFactory.address,
+      factoriesQueue: '[]',
+      isAutoCompounder: 'false',
+      currStage: 'claim',
+      offset: '0'
+    };
     let currentStage = "claim";
     let result, storageAfter;
     let numberOfRuns = 0;

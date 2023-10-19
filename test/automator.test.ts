@@ -60,6 +60,7 @@ describe("Automation Script Tests", function () {
   let mTokens: BigNumber[] = [];
   let relayFactoryRegistry: Registry;
   let tokensToCompound: Contract[] = [];
+  let autoCompounderFactory: AutoCompounderFactory;
 
   before(async function () {
     await deployments.fixture();
@@ -75,7 +76,7 @@ describe("Automation Script Tests", function () {
       KEEPER_REGISTRY_ADDRESS
     );
     const factories: string[] = await relayFactoryRegistry.getAll();
-    const autoCompounderFactory: AutoCompounderFactory =
+    autoCompounderFactory =
       await ethers.getContractAt("AutoCompounderFactory", factories[0]);
 
     tokenNames = ["dai", "usdc", "weth", "velo"]; // Tokens to be Compounded while testing Relays
@@ -147,7 +148,16 @@ describe("Automation Script Tests", function () {
        }
      }
 
-     let storageBefore = relayW3f.getStorage();
+     // Hardcoding Storage for this test to ignore AutoConverter Factory
+     let storageBefore = {
+       currRelay: relays[0],
+       relaysQueue: JSON.stringify(relays.slice(1)),
+       currFactory: autoCompounderFactory.address,
+       factoriesQueue: '[]',
+       isAutoCompounder: 'true',
+       currStage: 'claim',
+       offset: '0'
+     };
      let currentStage = "claim";
      let result, storageAfter;
      let numberOfRuns = 0;
@@ -196,7 +206,6 @@ describe("Automation Script Tests", function () {
   });
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
-    // TODO: Refactor this test to endOfFirstHour when RelayLib is updated
     const endOfFirstHourNextEpoch = (timestamp - (timestamp % (7 * DAY)) + HOUR) + 7 * DAY;
 
     let storageBefore = relayW3f.getStorage();
