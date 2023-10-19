@@ -104,7 +104,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
 
   if (quote) {
     // If best quote was found, encode swap call
-    call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
+    call = abi.encodeFunctionData("swapTokenToTokenWithOptionalRoute", [
       token,
       500, // TODO: Find desired slippage
       quote

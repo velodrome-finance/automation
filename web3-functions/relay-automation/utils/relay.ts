@@ -2,7 +2,7 @@
 import { Provider } from "@ethersproject/providers";
 import { Contract } from "@ethersproject/contracts";
 
-import { CLAIM_STAGE, DAY, PROCESSING_COMPLETE, RELAY_REGISTRY_ADDRESS } from "./constants";
+import { CLAIM_STAGE, DAY, HOUR, PROCESSING_COMPLETE, RELAY_REGISTRY_ADDRESS } from "./constants";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
 
 // Verifies if script can run in Current Epoch
@@ -14,7 +14,7 @@ export async function canRunInCurrentEpoch(provider, storage): Promise<boolean> 
 
   //TODO: refactor DAY to HOUR
   // Can only run Once per Epoch and only after its First Hour
-  return (!keeperLastRun || (startOfCurrentEpoch != startOfLastRunEpoch && timestamp > startOfCurrentEpoch + DAY));
+  return (!keeperLastRun || (startOfCurrentEpoch != startOfLastRunEpoch && timestamp > startOfCurrentEpoch + HOUR));
 }
 
 // Retrieve all Relay Factories from the Registry

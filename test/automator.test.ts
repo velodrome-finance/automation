@@ -118,12 +118,9 @@ describe("Automation Script Tests", function () {
       await seedRelayWithBalances(relay, storageSlots);
     }
 
-    // TODO: Should warp to last timestamp of First Day's Hour after Relay Lib is updated
     // Warp to the last timestamp of the First Hour of Epoch
     let timestamp = await time.latest();
-    // TODO: Uncomment this when Relay Lib is updated
-    // let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + HOUR;
-    let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + DAY;
+    let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + HOUR;
     let newTimestamp =
       endOfFirstHour >= timestamp ? endOfFirstHour : endOfFirstHour + 7 * DAY;
     time.increaseTo(newTimestamp);
