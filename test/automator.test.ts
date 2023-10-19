@@ -44,7 +44,7 @@ async function logRelayBalances(relays, tokensToCompound, mTokens, escrow) {
     console.log("=========================-//-=======-//-=========================");
 }
 
-describe("Automation Script Tests", function () {
+describe("AutoCompounder Automation Script Tests", function () {
   let relayW3f: Web3FunctionHardhat;
   let owner: SignerWithAddress;
   const RELAYS_TO_TEST = 1;
@@ -124,75 +124,75 @@ describe("Automation Script Tests", function () {
 
     relayW3f = w3f.get("relay-automation");
   });
-   it("Test Automator Flow", async () => {
-     // All balances were minted correctly for all Relays
-     let oldBalances = [];
-     await logRelayBalances(relays, tokensToCompound, mTokens, escrow);
-     for (const i in relays) {
-       let oldBal = await escrow.balanceOfNFT(mTokens[i]);
-       oldBalances.push(oldBal);
+  it("Test AutoCompounder Automation Flow", async () => {
+    // All balances were minted correctly for all Relays
+    let oldBalances = [];
+    await logRelayBalances(relays, tokensToCompound, mTokens, escrow);
+    for (const i in relays) {
+      let oldBal = await escrow.balanceOfNFT(mTokens[i]);
+      oldBalances.push(oldBal);
 
-       if(!Number(i)) // ignore setup verification for first relay as no balances are being sent to it
-         continue;
-       expect(oldBal).to.equal(BigNumber.from(10).pow(19));
-       for (const j in tokensToCompound) {
-         const token = tokensToCompound[j];
+      if(!Number(i)) // ignore setup verification for first relay as no balances are being sent to it
+        continue;
+      expect(oldBal).to.equal(BigNumber.from(10).pow(19));
+      for (const j in tokensToCompound) {
+        const token = tokensToCompound[j];
 
-         const bal = token === weth ? 10 : token === velo ? 100_000 : 10_000;
-         const decimals = BigNumber.from(10).pow(storageSlots[tokenNames[j]].decimals);
-         const expectedBalance = BigNumber.from(bal).mul(decimals);
+        const bal = token === weth ? 10 : token === velo ? 100_000 : 10_000;
+        const decimals = BigNumber.from(10).pow(storageSlots[tokenNames[j]].decimals);
+        const expectedBalance = BigNumber.from(bal).mul(decimals);
 
-         expect(await token.balanceOf(relays[i])).eq(expectedBalance);
-       }
-     }
+        expect(await token.balanceOf(relays[i])).eq(expectedBalance);
+      }
+    }
 
-     // Hardcoding Storage for this test to ignore AutoConverter Factory
-     let storageBefore = {
-       currRelay: relays[0],
-       relaysQueue: JSON.stringify(relays.slice(1)),
-       currFactory: autoCompounderFactory.address,
-       factoriesQueue: '[]',
-       isAutoCompounder: 'true',
-       currStage: 'claim',
-       offset: '0'
-     };
-     let currentStage = "claim";
-     let result, storageAfter;
-     let numberOfRuns = 0;
-     let rpcCalls = 0;
-     // Execute script until the automation is finished
-     while(!storageBefore.lastRunTimestamp) {
-         // Executes Script
-         let run = await relayW3f.run({storage: storageBefore});
-         ({result, storage: storageAfter} = run);
-         if(storageAfter.storage.currStage != currentStage) { // If state changes, Log Relay Balances
-           await logRelayBalances([storageBefore.currRelay], tokensToCompound, mTokens, escrow);
-           currentStage = storageAfter.storage.currStage ?? "";
-         }
+    // Hardcoding Storage for this test to ignore AutoConverter Factory
+    let storageBefore = {
+      currRelay: relays[0],
+      relaysQueue: JSON.stringify(relays.slice(1)),
+      currFactory: autoCompounderFactory.address,
+      factoriesQueue: '[]',
+      isAutoCompounder: 'true',
+      currStage: 'claim',
+      offset: '0'
+    };
+    let currentStage = "claim";
+    let result, storageAfter;
+    let numberOfRuns = 0;
+    let rpcCalls = 0;
+    // Execute script until the automation is finished
+    while(!storageBefore.lastRunTimestamp) {
+        // Executes Script
+        let run = await relayW3f.run({storage: storageBefore});
+        ({result, storage: storageAfter} = run);
+        if(storageAfter.storage.currStage != currentStage) { // If state changes, Log Relay Balances
+          await logRelayBalances([storageBefore.currRelay], tokensToCompound, mTokens, escrow);
+          currentStage = storageAfter.storage.currStage ?? "";
+        }
 
-         // Logging Info
-         rpcCalls += run.rpcCalls.total;
-         numberOfRuns += 1;
-         logW3fRunStats(run);
+        // Logging Info
+        rpcCalls += run.rpcCalls.total;
+        numberOfRuns += 1;
+        logW3fRunStats(run);
 
-         // Sending Generated Transactions
-         expect(result.canExec).to.equal(true);
-         for (let call of result.callData) {
-           await owner.sendTransaction({ to: call.to, data: call.data });
-         }
-         storageBefore = storageAfter.storage;
-     }
+        // Sending Generated Transactions
+        expect(result.canExec).to.equal(true);
+        for (let call of result.callData) {
+          await owner.sendTransaction({ to: call.to, data: call.data });
+        }
+        storageBefore = storageAfter.storage;
+    }
 
-     // All balances were Swapped to VELO and compounded correctly for all Relays
-     await logRelayBalances(relays, tokensToCompound, mTokens, escrow);
-     for (const i in relays) {
-       for (const token of tokensToCompound) {
-         expect(await token.balanceOf(relays[i])).to.equal(0);
-       }
-       expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
-     }
+    // All balances were Swapped to VELO and compounded correctly for all Relays
+    await logRelayBalances(relays, tokensToCompound, mTokens, escrow);
+    for (const i in relays) {
+      for (const token of tokensToCompound) {
+        expect(await token.balanceOf(relays[i])).to.equal(0);
+      }
+      expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
+    }
 
-   });
+  });
   it("Loads storage with Relays to Process", async () => {
     let storageBefore = relayW3f.getStorage();
     // First Run With Empty Storage

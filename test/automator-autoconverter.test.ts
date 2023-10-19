@@ -58,7 +58,7 @@ async function logRelayBalances(relays, tokensToConvert, usdc) {
   );
 }
 
-describe("Automation Script Tests", function () {
+describe("AutoConverter Automation Script Tests", function () {
   let relayW3f: Web3FunctionHardhat;
   let owner: SignerWithAddress;
   const RELAYS_TO_TEST = 1;
@@ -152,7 +152,7 @@ describe("Automation Script Tests", function () {
 
     relayW3f = w3f.get("relay-automation");
   });
-  it("Test Automator Flow", async () => {
+  it("Test AutoConverter Automation Flow", async () => {
     // All balances were minted correctly for all Relays
     let oldBalances = [];
     await logRelayBalances(relays, tokensToConvert, usdc);
