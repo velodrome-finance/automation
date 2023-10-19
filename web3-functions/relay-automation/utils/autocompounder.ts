@@ -86,7 +86,6 @@ async function encodeAutoCompounderSwap(
     return await encodeSwapFromTokens(relayAddr, tokensQueue, balancesQueue, storage, provider);
 }
 
-// TODO: If not for Compounding this could be on relay.ts
 // From a Relay Address and a list of Tokens, encode a swap per call
 async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], balancesQueue: string[], storage, provider: Provider): Promise<string> {
   const [poolsGraph, poolsByAddress] = buildGraph(

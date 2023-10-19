@@ -39,7 +39,6 @@ export async function processAutoConverter(
     return calls.map((call) => ({to: relay.address, data: call} as TxData));
 }
 
-// TODO: this could be pulled to a general utils
 // Encodes all Swaps for AutoConverter
 async function encodeAutoConverterSwap(
     relayAddr: string,
@@ -69,14 +68,12 @@ async function encodeAutoConverterSwap(
     return await encodeSwapFromTokens(relayAddr, tokensQueue, balancesQueue, storage, provider);
 }
 
-// TODO: If not for Compounding this could be on relay.ts
 // From a Relay Address and a list of Tokens, encode a swap per call
 async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], balancesQueue: string[], storage, provider: Provider): Promise<string> {
   const [poolsGraph, poolsByAddress] = buildGraph(
     await getPools(provider)
   );
 
-  //TODO: should i use relay abi?
   const relay = new Contract(relayAddr, convAbi, provider);
   const abi = relay.interface;
   let call: string = "";
@@ -115,7 +112,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
       return call;
     }
   }
-  await storage.set("currStage", PROCESSING_COMPLETE); // Next stage is compound encoding
+  await storage.set("currStage", PROCESSING_COMPLETE); // After Swapping, AutoConverter is finished
   await storage.delete("balancesQueue");
   await storage.delete("tokensQueue");
   return call;
