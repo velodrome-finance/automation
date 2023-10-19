@@ -138,8 +138,6 @@ describe("Automation Script Tests", function () {
 
     // Fetch all the AutoConverters and seed them with Tokens
     relays = await autoConverterFactory.relays();
-    console.log("THESE ARE THE TESTING RELAYS");
-    console.log(relays);
     for (const relay of relays.slice(1)) {
       // Only seed created Relays
       await seedRelayWithBalances(relay, storageSlots);
@@ -218,7 +216,6 @@ describe("Automation Script Tests", function () {
       for (let call of result.callData) {
         await owner.sendTransaction({ to: call.to, data: call.data });
       }
-      console.log(storageBefore);
       storageBefore = storageAfter.storage;
     }
 

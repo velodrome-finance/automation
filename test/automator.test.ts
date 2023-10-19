@@ -111,8 +111,6 @@ describe("Automation Script Tests", function () {
 
     // Fetch all the AutoCompounders and seed them with Tokens
     relays = await autoCompounderFactory.relays();
-    console.log("THESE ARE THE TESTING RELAYS");
-    console.log(relays);
     for (const relay of relays.slice(1)) { // Only seed created Relays
       await seedRelayWithBalances(relay, storageSlots);
     }
