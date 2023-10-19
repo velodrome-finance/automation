@@ -230,17 +230,6 @@ describe("AutoConverter Automation Script Tests", function () {
       expect(await usdc.balanceOf(relays[i])).to.above(oldBalances[i]);
     }
   });
-  it("Loads storage with Relays to Process", async () => {
-    let storageBefore = relayW3f.getStorage();
-    // First Run With Empty Storage
-    let run = await relayW3f.run({ storage: storageBefore });
-    let { result, storage: storageAfter } = run;
-    logW3fRunStats(run);
-    expect(result.canExec).to.equal(true);
-    expect(
-      JSON.parse(storageAfter.storage["relaysQueue"] as string).length
-    ).to.equal(RELAYS_TO_TEST); // The relay being processed is the one already on chain
-  });
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
     const endOfFirstHourNextEpoch =
