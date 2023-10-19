@@ -208,12 +208,12 @@ describe("Automation Script Tests", function () {
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
     // TODO: Refactor this test to endOfFirstHour when RelayLib is updated
-    const endOfFirstDayNextEpoch = (timestamp - (timestamp % (7 * DAY)) + DAY) + 7 * DAY;
+    const endOfFirstHourNextEpoch = (timestamp - (timestamp % (7 * DAY)) + HOUR) + 7 * DAY;
 
     let storageBefore = relayW3f.getStorage();
     // Setting Last run as the End of First day of Current Epoch
-    storageBefore["keeperLastRun"] = endOfFirstDayNextEpoch.toString();
-    await time.increaseTo(endOfFirstDayNextEpoch);
+    storageBefore["keeperLastRun"] = endOfFirstHourNextEpoch.toString();
+    await time.increaseTo(endOfFirstHourNextEpoch);
     let run = await relayW3f.run();
     let result = run.result;
     logW3fRunStats(run);

@@ -2,8 +2,8 @@
 import { Provider } from "@ethersproject/providers";
 import { Contract } from "@ethersproject/contracts";
 
-import { CLAIM_STAGE, DAY, HOUR, PROCESSING_COMPLETE, RELAY_REGISTRY_ADDRESS } from "./constants";
 import jsonConstants from "../../../lib/relay-private/script/constants/Optimism.json";
+import { CLAIM_STAGE, DAY, HOUR, PROCESSING_COMPLETE, RELAY_REGISTRY_ADDRESS } from "./constants";
 
 // Verifies if script can run in Current Epoch
 export async function canRunInCurrentEpoch(provider, storage): Promise<boolean> {
@@ -12,7 +12,6 @@ export async function canRunInCurrentEpoch(provider, storage): Promise<boolean> 
   const keeperLastRun: number = Number((await storage.get("keeperLastRun")) ?? "");
   const startOfLastRunEpoch: number = keeperLastRun - (keeperLastRun % (7 * DAY));
 
-  //TODO: refactor DAY to HOUR
   // Can only run Once per Epoch and only after its First Hour
   return (!keeperLastRun || (startOfCurrentEpoch != startOfLastRunEpoch && timestamp > startOfCurrentEpoch + HOUR));
 }
