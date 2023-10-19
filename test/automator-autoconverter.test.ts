@@ -27,13 +27,12 @@ import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contract
 import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
 import { AutoConverterFactory } from "../typechain/relay-private/src/autoconverter";
 import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
-import lpSugarAbi from "../web3-functions/relay-automation/abis/lp_sugar.json";
 import { Registry } from "../typechain/relay-private/src";
 
 import {
   KEEPER_REGISTRY_ADDRESS,
   RELAY_REGISTRY_ADDRESS,
-  LP_SUGAR_ADDRESS,
+  CONVERTER_TOKEN_ID,
   HOUR,
   DAY,
 } from "../web3-functions/relay-automation/utils/constants";
@@ -121,8 +120,7 @@ describe("Automation Script Tests", function () {
     await stopImpersonatingAccount(allowedManager);
 
     // Create multiple AutoConverters and save their mTokenId's
-    //TODO: Move AutoConverterId to constants
-    mTokens.push(BigNumber.from(19042)); // On-Chain AutoConverter's TokenID from current block
+    mTokens.push(BigNumber.from(CONVERTER_TOKEN_ID)); // On-Chain AutoConverter's TokenID from current block
     for (let i = 0; i < RELAYS_TO_TEST; i++)
       mTokens.push(
         await createAutoConverter(
@@ -143,30 +141,14 @@ describe("Automation Script Tests", function () {
       await seedRelayWithBalances(relay, storageSlots);
     }
 
-    // TODO: Should warp to last timestamp of First Day's Hour after Relay Lib is updated
     // Warp to the last timestamp of the First Hour of Epoch
     let timestamp = await time.latest();
-    // TODO: Uncomment this when Relay Lib is updated
-    // let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + HOUR;
-    let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + DAY;
+    let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + HOUR;
     let newTimestamp =
-      endOfFirstHour >= timestamp ? endOfFirstHour : endOfFirstHour + 7 * DAY;
+      endOfFirstHour >= timestamp ? endOfFirstHour : (endOfFirstHour + 6 * DAY); // cannot exceed current epoch
     time.increaseTo(newTimestamp);
 
     relayW3f = w3f.get("relay-automation");
-
-    // // TODO: Should I uncomment this caching?
-    // Warm up hardhat cache for lpSugar calls
-    const lpSugarContract = await ethers.getContractAt(
-      lpSugarAbi,
-      LP_SUGAR_ADDRESS
-    );
-    // await lpSugarContract.forSwaps(150, 0);
-    await lpSugarContract.rewards(
-      BigNumber.from(100),
-      BigNumber.from(0),
-      BigNumber.from(19041)
-    );
   });
   it("Test Automator Flow", async () => {
     // All balances were minted correctly for all Relays
