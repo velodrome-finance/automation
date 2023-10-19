@@ -44,13 +44,16 @@ export async function processAutoCompounder(
           ["function balanceOf(address) view returns (uint256)"],
           provider
         ).balanceOf(relayAddr);
-        if(!bal.isZero()) // if Relay has VELO, compound it
+        if(!bal.isZero()) {
+          // if Relay has VELO, compound it
           calls.push(abi.encodeFunctionData("compound"));
+          if(calls.length > 1)
+            calls = [abi.encodeFunctionData("multicall", [calls])]
+        }
         await storage.set("currStage", PROCESSING_COMPLETE); // After compounding Relay is processed
       }
     }
 
-    // TODO: encode calls in multicall to save gas?
     return calls.map((call) => ({to: relay.address, data: call} as TxData));
 }
 

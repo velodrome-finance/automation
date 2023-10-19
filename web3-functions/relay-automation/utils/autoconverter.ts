@@ -36,8 +36,6 @@ export async function processAutoConverter(
       if(call)
         calls.push(call);
     }
-
-    // TODO: encode calls in multicall to save gas?
     return calls.map((call) => ({to: relay.address, data: call} as TxData));
 }
 
