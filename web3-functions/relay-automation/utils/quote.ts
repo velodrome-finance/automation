@@ -8,6 +8,8 @@ import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
 import { ROUTER_ADDRESS, Route } from "./constants";
 
+const MAX_ROUTES = 70;
+
 /**
  * Returns pairs graph and a map of pairs to their addresses
  *
@@ -81,7 +83,7 @@ export function getRoutes(
     return [];
   }
 
-  const paths = [];
+  let paths: Route[][] = [];
 
   graphPaths.map((pathSet) => {
     let mappedPathSets = [];
@@ -115,7 +117,28 @@ export function getRoutes(
     });
     paths.push(...mappedPathSets);
   });
+
+  if(paths.length > MAX_ROUTES)
+      paths = filterPaths(paths, MAX_ROUTES);
   return paths;
+}
+
+// Filters out 2 Hop Paths until MaxLength is not surpassed
+function filterPaths(paths: Route[][], maxLength: number): Route[][] {
+    const itemsToRemove: number = paths.length - maxLength;
+    let filteredArray: Route[][] = [];
+    let count = 0;
+    for(let i = 0; i < paths.length; i++) {
+        const path: Route[] = paths[i];
+        if(count < itemsToRemove) {
+          if(path.length == 1)
+              filteredArray.push(path);
+          else // Skip tokens with more than 1 hop
+              count++;
+        } else
+          filteredArray.push(path);
+    }
+    return filteredArray;
 }
 
 /**
