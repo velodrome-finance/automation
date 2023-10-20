@@ -81,11 +81,11 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
   // Return execution Call Data
   return txData.length > 0
     ? {
-      canExec: true,
-      callData: txData,
-    }
+        canExec: true,
+        callData: txData,
+      }
     : {
-      canExec: false,
-      message: "No transactions to broadcast.",
-    }
+        canExec: false,
+        message: "No transactions to broadcast.",
+      };
 });

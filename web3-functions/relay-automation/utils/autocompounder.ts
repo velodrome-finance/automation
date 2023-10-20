@@ -4,7 +4,12 @@ import { Contract } from "@ethersproject/contracts";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { buildGraph, isPriceImpactTooHigh, fetchQuote, getRoutes } from "./quote";
+import {
+  isPriceImpactTooHigh,
+  buildGraph,
+  fetchQuote,
+  getRoutes,
+} from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
 import {
   PROCESSING_COMPLETE,
@@ -140,7 +145,7 @@ async function encodeSwapFromTokens(
   }
 
   if (quote) {
-    const slippage = await isPriceImpactTooHigh(quote, provider) ? 500 : 100;
+    const slippage = (await isPriceImpactTooHigh(quote, provider)) ? 500 : 100;
 
     // If best quote was found, encode swap call
     call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [

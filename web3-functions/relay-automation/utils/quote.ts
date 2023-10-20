@@ -220,24 +220,27 @@ export async function isPriceImpactTooHigh(quote, provider: Provider) {
   let factories: string[] = [];
   let isStable: boolean[] = [];
   routes.forEach((r) => {
-      tokensOut.push(r.to);
-      tokensIn.push(r.from);
-      isStable.push(r.stable);
-      factories.push(r.factory);
+    tokensOut.push(r.to);
+    tokensIn.push(r.from);
+    isStable.push(r.stable);
+    factories.push(r.factory);
   });
 
-  const [tradeDiffsA, tradeDiffsB] = await lib.getTradeDiffs(amountsIn, tokensIn, tokensOut, isStable, factories);
+  const [tradeDiffsA, tradeDiffsB] = await lib.getTradeDiffs(
+    amountsIn,
+    tokensIn,
+    tokensOut,
+    isStable,
+    factories
+  );
   let totalRatio: BigNumber = utils.parseUnits("1.0");
 
-  for(const i in tradeDiffsA) {
-      const a: BigNumber = tradeDiffsA[i];
-      const b: BigNumber = tradeDiffsB[i];
-      if(a.isZero())
-          totalRatio = utils.parseUnits("0");
-      else
-          totalRatio = totalRatio.mul(b).div(a);
+  for (const i in tradeDiffsA) {
+    const a: BigNumber = tradeDiffsA[i];
+    const b: BigNumber = tradeDiffsB[i];
+    if (a.isZero()) totalRatio = utils.parseUnits("0");
+    else totalRatio = totalRatio.mul(b).div(a);
   }
-
 
   const priceImpact = utils.parseUnits("1.0").sub(totalRatio).mul(100);
   return priceImpact.gt(utils.parseUnits(MAX_PRICE_IMPACT));

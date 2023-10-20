@@ -214,13 +214,12 @@ describe("AutoConverter Automation Script Tests", function () {
       logW3fRunStats(run);
 
       // Sending Generated Transactions
-      if(result.canExec) {
+      if (result.canExec) {
         expect(result.callData.length).to.gt(0);
         for (let call of result.callData) {
           await owner.sendTransaction({ to: call.to, data: call.data });
         }
-      } else
-        expect(result.message).to.equal("No transactions to broadcast.");
+      } else expect(result.message).to.equal("No transactions to broadcast.");
       storageBefore = storageAfter.storage;
     }
 
