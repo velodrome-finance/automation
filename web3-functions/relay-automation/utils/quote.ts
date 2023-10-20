@@ -215,10 +215,16 @@ export async function isPriceImpactTooHigh(quote, provider: Provider) {
   );
   const routes: Route[] = quote.route;
   const amountsIn: BigNumber[] = quote.amountsOut.slice(0, routes.length);
-  const factories: string[] = routes.map((r) => r.factory);
-  const isStable: boolean[] = routes.map((r) => r.stable);
-  const tokensIn: string[] = routes.map((r) => r.from);
-  const tokensOut: string[] = routes.map((r) => r.to);
+  let tokensIn: string[] = [];
+  let tokensOut: string[] = [];
+  let factories: string[] = [];
+  let isStable: boolean[] = [];
+  routes.forEach((r) => {
+      tokensOut.push(r.to);
+      tokensIn.push(r.from);
+      isStable.push(r.stable);
+      factories.push(r.factory);
+  });
 
   const [tradeDiffsA, tradeDiffsB] = await lib.getTradeDiffs(amountsIn, tokensIn, tokensOut, isStable, factories);
   let totalRatio: BigNumber = utils.parseUnits("1.0");
