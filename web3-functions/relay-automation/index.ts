@@ -78,9 +78,14 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     storage
   );
 
-  // Return execution call data
-  return {
-    canExec: true,
-    callData: txData,
-  };
+  // Return execution Call Data
+  return txData.length > 0
+    ? {
+      canExec: true,
+      callData: txData,
+    }
+    : {
+      canExec: false,
+      message: "No transactions to broadcast.",
+    }
 });

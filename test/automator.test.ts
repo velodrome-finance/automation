@@ -206,10 +206,13 @@ describe("AutoCompounder Automation Script Tests", function () {
       logW3fRunStats(run);
 
       // Sending Generated Transactions
-      expect(result.canExec).to.equal(true);
-      for (let call of result.callData) {
-        await owner.sendTransaction({ to: call.to, data: call.data });
-      }
+      if(result.canExec) {
+        expect(result.callData.length).to.gt(0);
+        for (let call of result.callData) {
+          await owner.sendTransaction({ to: call.to, data: call.data });
+        }
+      } else
+        expect(result.message).to.equal("No transactions to broadcast.");
       storageBefore = storageAfter.storage;
     }
 
