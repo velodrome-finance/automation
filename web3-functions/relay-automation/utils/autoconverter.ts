@@ -4,7 +4,7 @@ import { Contract } from "@ethersproject/contracts";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import { abi as convAbi } from "../../../artifacts/lib/relay-private/src/autoConverter/AutoConverter.sol/AutoConverter.json";
-import { buildGraph, fetchQuote, getRoutes } from "./quote";
+import { buildGraph, fetchQuote, getRoutes, isPriceImpactTooHigh } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
 import {
   PROCESSING_COMPLETE,
@@ -121,11 +121,13 @@ async function encodeSwapFromTokens(
   }
 
   if (quote) {
+    const slippage = await isPriceImpactTooHigh(quote, provider) ? 500 : 100;
+
     // If best quote was found, encode swap call
     call = abi.encodeFunctionData("swapTokenToTokenWithOptionalRoute", [
       token,
-      500, // TODO: Find desired slippage
-      quote,
+      slippage,
+      quote.route,
     ]);
 
     // update queues

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 import Graph from "graphology";
+import { utils } from "ethers";
 import { chunk, isEmpty } from "lodash";
-import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
+import { BigNumber } from "@ethersproject/bignumber";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { ROUTER_ADDRESS, Route } from "./constants";
+import { VELO_LIBRARY_ADDRESS, ROUTER_ADDRESS, Route } from "./constants";
 
+const MAX_PRICE_IMPACT = "0.5";
 const MAX_ROUTES = 70;
 
 /**
@@ -197,5 +199,40 @@ export async function fetchQuote(
     return null;
   }
 
-  return bestQuote.route;
+  return bestQuote;
+}
+
+/**
+ * Fetches and calculates the price impact for a quote
+ */
+export async function isPriceImpactTooHigh(quote, provider: Provider) {
+  const lib: Contract = new Contract(
+    VELO_LIBRARY_ADDRESS,
+    [
+      "function getTradeDiffs(uint[], address[], address[], bool[], address[]) view returns (uint[], uint[])",
+    ],
+    provider
+  );
+  const routes: Route[] = quote.route;
+  const amountsIn: BigNumber[] = quote.amountsOut.slice(0, routes.length);
+  const factories: string[] = routes.map((r) => r.factory);
+  const isStable: boolean[] = routes.map((r) => r.stable);
+  const tokensIn: string[] = routes.map((r) => r.from);
+  const tokensOut: string[] = routes.map((r) => r.to);
+
+  const [tradeDiffsA, tradeDiffsB] = await lib.getTradeDiffs(amountsIn, tokensIn, tokensOut, isStable, factories);
+  let totalRatio: BigNumber = utils.parseUnits("1.0");
+
+  for(const i in tradeDiffsA) {
+      const a: BigNumber = tradeDiffsA[i];
+      const b: BigNumber = tradeDiffsB[i];
+      if(a.isZero())
+          totalRatio = utils.parseUnits("0");
+      else
+          totalRatio = totalRatio.mul(b).div(a);
+  }
+
+
+  const priceImpact = utils.parseUnits("1.0").sub(totalRatio).mul(100);
+  return priceImpact.gt(utils.parseUnits(MAX_PRICE_IMPACT));
 }
