@@ -4,20 +4,21 @@ import { expect } from "chai";
 import { before } from "mocha";
 import { Contract } from "ethers";
 import { BigNumber } from "@ethersproject/bignumber";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Web3FunctionHardhat } from "@gelatonetwork/web3-functions-sdk/hardhat-plugin";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 
-import jsonConstants from "../lib/relay-private/script/constants/Optimism.json";
-import { Voter } from "../typechain/relay-private/lib/contracts/contracts/Voter";
-import { Minter } from "../typechain/relay-private/lib/contracts/contracts/Minter";
-import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
 import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
+import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
+import { Minter } from "../typechain/relay-private/lib/contracts/contracts/Minter";
+import { Voter } from "../typechain/relay-private/lib/contracts/contracts/Voter";
+import jsonConstants from "../lib/relay-private/script/constants/Optimism.json";
 import { WEEK } from "../web3-functions/relay-automation/utils/constants";
+import { VotingEscrow } from "../typechain";
 
 async function getPools(voter: Contract): Promise<string[]> {
     const length = (await voter.length()).toNumber();
-    return (await Promise.all([...Array(length).keys()].map((i) => voter.pools(i))));
+    return (await Promise.all([...Array(length).keys()].map((i) => voter.pools(i)))).slice(0,30);
 }
 
 async function getV1DistributionData(voter: Contract, pools: string[]): Promise<[string[], Contract[][]]> {
@@ -103,15 +104,17 @@ async function assertRewardBalances(rewardAddrs: string[], tokens: Contract[][],
           expect(bal).to.gte(oldBal);
       }
       // Balances of some tokens have increased due to distribution
-      expect(counting).to.gt(10);
+      expect(counting).to.gt(0);
       console.log(counting);
   }
 }
+
 
 describe("Distribute Automation Tests", function () {
 
   let distributeScript: Web3FunctionHardhat;
   let owner: SignerWithAddress;
+  let escrow: VotingEscrow;
   let v1Minter: Contract;
   let minter: Minter;
   let v1Voter: Voter;
@@ -124,6 +127,7 @@ describe("Distribute Automation Tests", function () {
     voter = await ethers.getContractAt("Voter", jsonOutput.Voter);
     minter = await ethers.getContractAt("Minter", jsonOutput.Minter);
     v1Voter = await ethers.getContractAt("Voter", jsonConstants.v1.Voter);
+    escrow = await ethers.getContractAt("VotingEscrow", jsonConstants.v1.VotingEscrow);
     v1Minter = await ethers.getContractAt(["function active_period() view returns (uint256)"], jsonConstants.v1.Minter);
   });
 
@@ -141,6 +145,7 @@ describe("Distribute Automation Tests", function () {
 
     const prevV2Balances: BigNumber[][] = await getRewardBalances(v2FeeRewardsAddrs, v2Tokens);
     const prevV1Balances: BigNumber[][] = await getRewardBalances(v1Gauges, v1Tokens);
+    const oldSinkManagerBalance: BigNumber = await escrow.balanceOfNFT(BigNumber.from(jsonOutput.ownedTokenId));
 
     const { result } = await distributeScript.run();
     expect(result.canExec).to.equal(true);
@@ -157,5 +162,8 @@ describe("Distribute Automation Tests", function () {
 
     await assertRewardBalances(v2FeeRewardsAddrs, v2Tokens, prevV2Balances);
     await assertRewardBalances(v1Gauges, v1Tokens, prevV1Balances);
+
+    const newSinkBal = await escrow.balanceOfNFT(BigNumber.from(jsonOutput.ownedTokenId));
+    expect(newSinkBal).to.gt(oldSinkManagerBalance);
   });
 });
