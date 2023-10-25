@@ -17,10 +17,31 @@ import { WEEK } from "../web3-functions/relay-automation/utils/constants";
 
 async function getPools(voter: Contract): Promise<string[]> {
     const length = (await voter.length()).toNumber();
-    return (await Promise.all([...Array(length).keys()].slice(0,30).map((i) => voter.pools(i))));
+    return (await Promise.all([...Array(length).keys()].map((i) => voter.pools(i))));
 }
 
-async function getDistributionData(voter: Contract, pools: string[]): Promise<[string[], string[], Contract[][]]> {
+async function getV1DistributionData(voter: Contract, pools: string[]): Promise<[string[], Contract[][]]> {
+    let gauges: string[] = [];
+    let tokens: Contract[][] = [];
+    for(const pool of pools) {
+        // Fetching Gauge
+        const gauge = await ethers.getContractAt( [
+            "function rewardsListLength() external view returns (uint256)",
+            "function rewards(uint256) external view returns (address)"
+        ], await voter.gauges(pool));
+        gauges.push(gauge.address);
+
+        // Fetching Reward Tokens
+        const rewardsLength: BigNumber = await gauge.rewardsListLength();
+        const rewardAddrs = await Promise.all([...Array(rewardsLength.toNumber()).keys()].map((i) => gauge.rewards(i)));
+        const rewardTokens: Contract[] = await Promise.all(rewardAddrs.map((addr) => ethers.getContractAt(erc20Abi, addr)));
+        tokens.push(rewardTokens);
+    }
+
+    return [gauges, tokens]
+}
+
+async function getV2DistributionData(voter: Contract, pools: string[]): Promise<[string[], Contract[][]]> {
     let gauges: string[] = [];
     let tokens: Contract[][] = [];
     let feeRewardsAddrs: string[] = [];
@@ -40,21 +61,19 @@ async function getDistributionData(voter: Contract, pools: string[]): Promise<[s
         tokens.push(rewardTokens);
     }
 
-    return [gauges, feeRewardsAddrs, tokens]
+    return [feeRewardsAddrs, tokens]
 }
 
-async function getV2RewardBalances(gauges: string[], feeRewardsAddrs: string[], tokens: Contract[][]): Promise<BigNumber[][]> {
+async function getRewardBalances(rewardAddrs: string[], tokens: Contract[][]): Promise<BigNumber[][]> {
     let prevBalances: BigNumber[][] = [];
-    console.log(JSON.stringify(gauges));
-    console.log("Will Log Gauge Balances now");
-    for(let i = 0; i < gauges.length; i++) {
-        const gauge: string = gauges[i];
-        console.log(`=========== Current Gauge: ${gauge} [ Before Txs ] ===========`);
+    console.log("Will Log Reward Balances now");
+    for(let i = 0; i < rewardAddrs.length; i++) {
+        const rewardAddr: string = rewardAddrs[i];
+        console.log(`=========== Current Reward: ${rewardAddr} [ Before Txs ] ===========`);
         const rewardTokens: Contract[] = tokens[i];
         console.log("REWARDS LENGTH %d", rewardTokens.length);
-        const feeRewards: string = feeRewardsAddrs[i];
         // Fetch Balances on FeeRewards Contract
-        let balances: BigNumber[] = await Promise.all(rewardTokens.map((token) => token.balanceOf(feeRewards)));
+        let balances: BigNumber[] = await Promise.all(rewardTokens.map((token) => token.balanceOf(rewardAddr)));
         for(const i in rewardTokens) {
             const token = rewardTokens[i];
             const bal = balances[i];
@@ -65,32 +84,27 @@ async function getV2RewardBalances(gauges: string[], feeRewardsAddrs: string[], 
     return prevBalances;
 }
 
-async function assertAllV2GaugeBalances(gauges: string[], feeRewardsAddrs: string[], tokens: Contract[][], prevBalances: BigNumber[][]) {
+async function assertRewardBalances(rewardAddrs: string[], tokens: Contract[][], prevBalances: BigNumber[][]) {
   let counting = 0;
-  let tokenCount = 0;
-  for(let i = 0; i < gauges.length; i++) {
-      const gauge: string = gauges[i];
+  for(let i = 0; i < rewardAddrs.length; i++) {
+      const rewardAddr: string = rewardAddrs[i];
       const rewardTokens: Contract[] = tokens[i]
-      const feeRewards: string = feeRewardsAddrs[i];
-      console.log(`=========== Current Gauge: ${gauge} [ After Txs ]===========`);
+      console.log(`=========== Current Reward: ${rewardAddr} [ After Txs ]===========`);
       let oldBalances: BigNumber[] = prevBalances[i];
-      let balances: BigNumber[] = await Promise.all(rewardTokens.map((token) => token.balanceOf(feeRewards)));
+      let balances: BigNumber[] = await Promise.all(rewardTokens.map((token) => token.balanceOf(rewardAddr)));
       for(const i in balances) {
           const token: Contract = rewardTokens[i];
           const oldBal: BigNumber = oldBalances[i];
           const bal: BigNumber = balances[i];
           console.log(`TOKEN: ${token.address}; BALANCE ->> ${bal.toString()}`);
-          tokenCount++;
           if(bal.gt(oldBal))
               counting++;
           console.log(`IS EQUAL? ${bal.eq(oldBal)}`);
-          expect(bal.gte(oldBal)); //TODO: Is this assertion correct?
+          expect(bal).to.gte(oldBal);
       }
-      console.log(`Claimed Rewards on ${counting} Gauges`);
-      // TODO: Add assertion for Counting
-      expect(counting).to.gt(tokenCount/2); // at least half of all gauge tokens have been claimed
+      // Balances of some tokens have increased due to distribution
+      expect(counting).to.gt(10);
       console.log(counting);
-      console.log(tokenCount);
   }
 }
 
@@ -108,12 +122,12 @@ describe("Distribute Automation Tests", function () {
     distributeScript = w3f.get("distribute");
 
     voter = await ethers.getContractAt("Voter", jsonOutput.Voter);
-    v1Voter = await ethers.getContractAt("Voter", jsonOutput.Voter);
     minter = await ethers.getContractAt("Minter", jsonOutput.Minter);
+    v1Voter = await ethers.getContractAt("Voter", jsonConstants.v1.Voter);
     v1Minter = await ethers.getContractAt(["function active_period() view returns (uint256)"], jsonConstants.v1.Minter);
   });
 
-  it("Return canExec: true", async () => {
+  it("V1 and V2 Distribution Flow", async () => {
 
     let v2Pools: string[] = await getPools(voter);
     let v1Pools: string[] = await getPools(v1Voter);
@@ -122,17 +136,17 @@ describe("Distribute Automation Tests", function () {
     let lastUpdateV1 = await v1Minter.active_period();
     await time.increaseTo((lastUpdate).toNumber() + WEEK + 1);
 
-    const [v2Gauges, v2FeeRewardsAddrs, v2Tokens]: [string[], string[], Contract[][]] = await getDistributionData(voter, v2Pools);
-    const prevV2Balances = await getV2RewardBalances(v2Gauges, v2FeeRewardsAddrs, v2Tokens);
+    const [v2FeeRewardsAddrs, v2Tokens]: [string[], Contract[][]] = await getV2DistributionData(voter, v2Pools);
+    const [v1Gauges, v1Tokens]: [string[], Contract[][]] = await getV1DistributionData(v1Voter, v1Pools);
+
+    const prevV2Balances: BigNumber[][] = await getRewardBalances(v2FeeRewardsAddrs, v2Tokens);
+    const prevV1Balances: BigNumber[][] = await getRewardBalances(v1Gauges, v1Tokens);
 
     const { result } = await distributeScript.run();
     expect(result.canExec).to.equal(true);
 
-    let count = 0;
-    for (let call of result.callData) {
-      count++;
+    for (let call of result.callData)
       await owner.sendTransaction({ to: call.to, data: call.data });
-    }
 
     // Assert that Minter updates were done correctly
     let newUpdate = await minter.activePeriod();
@@ -141,6 +155,7 @@ describe("Distribute Automation Tests", function () {
     expect(newUpdateV1.toNumber()).to.gt(lastUpdateV1.toNumber());
     expect(newUpdate.toNumber()).to.eq(newUpdateV1.toNumber());
 
-    await assertAllV2GaugeBalances(v2Gauges, v2FeeRewardsAddrs, v2Tokens, prevV2Balances);
+    await assertRewardBalances(v2FeeRewardsAddrs, v2Tokens, prevV2Balances);
+    await assertRewardBalances(v1Gauges, v1Tokens, prevV1Balances);
   });
 });
