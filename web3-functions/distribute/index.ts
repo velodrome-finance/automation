@@ -8,11 +8,7 @@ import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 
 import jsonOutput from "../../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
-import {abi as minterAbi} from "../../artifacts/lib/relay-private/lib/contracts/contracts/Minter.sol/Minter.json";
-import {abi as voterAbi} from "../../artifacts/lib/relay-private/lib/contracts/contracts/Voter.sol/Voter.json";
-
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
-
 import { WEEK, DAY, TxData } from "../relay-automation/utils/constants";
 
 async function encodeV1DistributionCalls(provider: Provider): Promise<TxData[]> {
@@ -35,7 +31,6 @@ async function encodeV1DistributionCalls(provider: Provider): Promise<TxData[]> 
                   data: v1Voter.interface.encodeFunctionData("distribute(uint256,uint256)", [ i, i + 10 ])
               } as TxData)));
 
-
     return txData;
 }
 
@@ -47,9 +42,7 @@ async function encodeV2DistributionCalls(provider: Provider): Promise<TxData[]> 
     txData.push({ to: v2Minter.address, data: v2Minter.interface.encodeFunctionData("updatePeriod()") } as TxData);
 
     // Distributing to V2 Gauges
-    //TODO: Perhaps encode inline ABI with functions "distribute" and "length"
     const v2Voter = new Contract(jsonOutput.Voter, ["function distribute(uint256 _start, uint256 _finish)", "function length() external view returns (uint256)"], provider);
-
     const poolLength = await v2Voter.length();
 
     // TODO: Probably process 1 distribute per call
@@ -76,6 +69,7 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
   try {
     const timestamp = (await provider.getBlock("latest")).timestamp;
+    console.log(`Timestamp is ${timestamp}`);
     // TODO: maybe make new utils folder for this script to save constants
     let firstDayEnd = timestamp - (timestamp % WEEK) + DAY;
 
@@ -86,12 +80,18 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     // v1 Update Period > v1 Distribute > v2 Update Period > v2 Distribute > SinkClaim
     // Encoding V1 Distribution transactions
     txData = txData.concat(await encodeV1DistributionCalls(provider));
+    console.log("DATA FOR V1");
+    console.log(txData);
 
 
     // Encoding V2 Distribution transactions
     txData = txData.concat(await encodeV2DistributionCalls(provider));
 
+    console.log("DATA FOR V2");
+    console.log(txData);
+
   } catch (err) {
+      console.log(err);
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
 
