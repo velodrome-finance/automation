@@ -205,7 +205,6 @@ describe("Automation Script Tests", function () {
   });
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
-    // TODO: Refactor this test to endOfFirstHour when RelayLib is updated
     const endOfFirstHourNextEpoch = (timestamp - (timestamp % (7 * DAY)) + HOUR) + 7 * DAY;
 
     let storageBefore = relayW3f.getStorage();
