@@ -11,31 +11,70 @@ import { WEEK, DAY, TxData } from "../relay-automation/utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 import jsonOutput from "../../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
 
-async function encodeDistributionCalls(voterAddr: string, minterAddr: string, minterFunction: string, shouldRebase: boolean, provider: Provider): Promise<TxData[]> {
-    let txData: TxData[] = [];
+async function encodeDistributionCalls(
+  voterAddr: string,
+  minterAddr: string,
+  minterFunction: string,
+  shouldRebase: boolean,
+  provider: Provider
+): Promise<TxData[]> {
+  let txData: TxData[] = [];
 
-    // Minter Update Period
-    const v1Minter: Contract = new Contract(minterAddr, [`function ${minterFunction} external returns (uint256)`], provider);
-    txData.push({ to: minterAddr, data: v1Minter.interface.encodeFunctionData(minterFunction) } as TxData);
+  // Minter Update Period
+  const v1Minter: Contract = new Contract(
+    minterAddr,
+    [`function ${minterFunction} external returns (uint256)`],
+    provider
+  );
+  txData.push({
+    to: minterAddr,
+    data: v1Minter.interface.encodeFunctionData(minterFunction),
+  } as TxData);
 
-    // Distributing to Gauges
-    const v1Voter: Contract = new Contract(voterAddr, ["function distribute(uint256 _start, uint256 _finish)", "function length() external view returns (uint256)"], provider);
-    const poolLength: BigNumber = await v1Voter.length();
+  // Distributing to Gauges
+  const v1Voter: Contract = new Contract(
+    voterAddr,
+    [
+      "function distribute(uint256 _start, uint256 _finish)",
+      "function length() external view returns (uint256)",
+    ],
+    provider
+  );
+  const poolLength: BigNumber = await v1Voter.length();
 
-    // TODO: Probably process 1 distribute per call
-    // or perhaps one call per gauge? if not too gas intensive
-    // Distributes in batches of 10 but will probably change to 1 gauge per batch
-    txData = txData.concat([...Array(poolLength.toNumber()).keys()].filter((i: number) => i % 10 == 0).slice(0,3)
-              .map((i) => ({
-                  to: voterAddr,
-                  data: v1Voter.interface.encodeFunctionData("distribute(uint256,uint256)", [ i, i + 10 ])
-              } as TxData)));
+  // TODO: Probably process 1 distribute per call
+  // or perhaps one call per gauge? if not too gas intensive
+  // Distributes in batches of 10 but will probably change to 1 gauge per batch
+  txData = txData.concat(
+    [...Array(poolLength.toNumber()).keys()]
+      .filter((i: number) => i % 10 == 0)
+      .slice(0, 3)
+      .map(
+        (i) =>
+          ({
+            to: voterAddr,
+            data: v1Voter.interface.encodeFunctionData(
+              "distribute(uint256,uint256)",
+              [i, i + 10]
+            ),
+          } as TxData)
+      )
+  );
 
-    if(shouldRebase) {
-      const sinkManager: Contract = new Contract(jsonOutput.SinkManager, ["function claimRebaseAndGaugeRewards()"], provider);
-      txData.push({to: sinkManager.address, data: sinkManager.interface.encodeFunctionData("claimRebaseAndGaugeRewards()")} as TxData);
-    }
-    return txData;
+  if (shouldRebase) {
+    const sinkManager: Contract = new Contract(
+      jsonOutput.SinkManager,
+      ["function claimRebaseAndGaugeRewards()"],
+      provider
+    );
+    txData.push({
+      to: sinkManager.address,
+      data: sinkManager.interface.encodeFunctionData(
+        "claimRebaseAndGaugeRewards()"
+      ),
+    } as TxData);
+  }
+  return txData;
 }
 
 // Verifies if script can run in Current Epoch
@@ -73,16 +112,31 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
     // v1 Update Period > v1 Distribute > v2 Update Period > v2 Distribute > SinkClaim
     // Encoding V1 Distribution transactions
-    txData = txData.concat(await encodeDistributionCalls(jsonConstants.v1.Voter, jsonConstants.v1.Minter, "update_period()", false, provider));
+    txData = txData.concat(
+      await encodeDistributionCalls(
+        jsonConstants.v1.Voter,
+        jsonConstants.v1.Minter,
+        "update_period()",
+        false,
+        provider
+      )
+    );
 
     // Encoding V2 Distribution transactions
-    txData = txData.concat(await encodeDistributionCalls(jsonOutput.Voter, jsonOutput.Minter, "updatePeriod()", true, provider));
+    txData = txData.concat(
+      await encodeDistributionCalls(
+        jsonOutput.Voter,
+        jsonOutput.Minter,
+        "updatePeriod()",
+        true,
+        provider
+      )
+    );
 
     // Saves the latest Distribution's Timestamp
     const timestamp = (await provider.getBlock("latest")).timestamp;
     await storage.set("lastDistribution", timestamp.toString());
   } catch (err) {
-      console.log(err);
     return { canExec: false, message: `Rpc call failed ${err}` };
   }
 
