@@ -75,9 +75,10 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     // Encoding V1 Distribution transactions
     txData = txData.concat(await encodeDistributionCalls(jsonConstants.v1.Voter, jsonConstants.v1.Minter, "update_period()", false, provider));
 
-
-    // // Encoding V2 Distribution transactions
+    // Encoding V2 Distribution transactions
     txData = txData.concat(await encodeDistributionCalls(jsonOutput.Voter, jsonOutput.Minter, "updatePeriod()", true, provider));
+
+    // Saves the latest Distribution's Timestamp
     const timestamp = (await provider.getBlock("latest")).timestamp;
     await storage.set("lastDistribution", timestamp.toString());
   } catch (err) {
