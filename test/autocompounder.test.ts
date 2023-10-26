@@ -207,7 +207,7 @@ describe("AutoCompounder Automation Tests", function () {
 
     // Mint VELO to test user
     let { address: tokenAddr, slot } = storageSlots["velo"];
-    await setBalanceOf(owner.address, tokenAddr, slot, 100_000e18); //TODO: this bal could be smaller
+    await setBalanceOf(owner.address, tokenAddr, slot, 100_000e18);
 
     // Setting owner as Keeper
     let allowedManager = await keeperRegistry.owner();

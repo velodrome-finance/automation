@@ -32,10 +32,6 @@ export async function getTokensToConvert(
     )
     .filter((token: RelayToken) => !token.balance.isZero());
 
-  // relayTokens.forEach((token) => {
-  //   console.log(`Address: ${token.address}, Amount: ${token.balance}`);
-  // });
-
   return relayTokens;
 }
 
@@ -50,7 +46,6 @@ export async function getConverterRelayInfos(
     (r: string) => new Contract(r, convAbi, provider)
   );
 
-  // TODO: Fix getting tokens to swap
   let compounderFactory: Contract = new Contract(
     "0xd4C6eDDBE963aFA2D7b1562d0F2F3F9462E6525b",
     ["function highLiquidityTokens() external view returns (address[] memory)"],
@@ -83,28 +78,10 @@ export async function getConverterTxData(
   relayInfos.forEach((relayInfo: RelayInfo, i: number) => {
     let relay = relayInfo.contract;
     let abi = relay.interface;
-    //TODO: also encode claimBribes and claimFees
 
-    // TODO: Finish useQuote
-    // const { data: pools, error: poolsError } = useContractRead({
-    //   address: LP_SUGAR_ADDRESS,
-    //   abi: LP_SUGAR_ABI,
-    //   functionName: "forSwaps",
-    //   args: [600, 0],
-    //   cacheTime: 5_000,
-    // });
-
-    // const {
-    //   data: newQuote,
-    //   error: quoteError,
-    //   refetch: reQuote,
-    // } = useQuote(pools, relayInfo.tokens[0].address, jsonConstants.v2.VELO, amount, {
-    //   enabled: pools.length > 0 && amount != 0,
-    // });
     let destinationToken: string = destinationTokens[i];
     let calls: string[] = relayInfo.tokens.map((token) => {
       if (token.address == destinationToken)
-        // TODO: Finish excluding destination token
         token.address = jsonConstants.v2.VELO;
       return abi.encodeFunctionData("swapTokenToToken", [
         [getRoute(token.address, destinationToken)],
@@ -113,7 +90,7 @@ export async function getConverterTxData(
       ]);
     });
 
-    calls.pop(); //TODO: removing frax there is no routing for it yet
+    calls.pop();
 
     txData = txData.concat(
       calls.map((call) => ({ to: relay.address, data: call } as TxData))
