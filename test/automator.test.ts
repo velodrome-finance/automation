@@ -225,8 +225,14 @@ describe("AutoCompounder Automation Script Tests", function () {
     }
   });
   it("Loads storage with Relays to Process", async () => {
-    let storageBefore = relayW3f.getStorage();
     // First Run With Empty Storage
+    let timestamp = await time.latest();
+    const endOfFirstHourCurrentEpoch =
+      timestamp - (timestamp % (7 * DAY)) + HOUR;
+    let storageBefore = relayW3f.getStorage(); // Setting LastRun timestamp
+    storageBefore["keeperLastRun"] = endOfFirstHourCurrentEpoch.toString();
+    // Forward to next Epoch and Run Automation
+    await time.increaseTo(endOfFirstHourCurrentEpoch + 7 * DAY + 1);
     let run = await relayW3f.run({ storage: storageBefore });
     let { result, storage: storageAfter } = run;
     logW3fRunStats(run);

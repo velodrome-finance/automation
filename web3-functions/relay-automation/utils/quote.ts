@@ -10,7 +10,7 @@ import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 import { VELO_LIBRARY_ADDRESS, ROUTER_ADDRESS, Route } from "./constants";
 
 const MAX_PRICE_IMPACT = "0.5";
-const MAX_ROUTES = 70;
+const MAX_ROUTES = 25;
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -64,6 +64,7 @@ export function getRoutes(
   pairsByAddress,
   fromToken: string,
   toToken: string,
+  highLiqTokens: string[],
   maxHops = 2
 ): Route[][] {
   if (!fromToken || !toToken) {
@@ -120,24 +121,38 @@ export function getRoutes(
     paths.push(...mappedPathSets);
   });
 
-  if (paths.length > MAX_ROUTES) paths = filterPaths(paths, MAX_ROUTES);
-  return paths;
+  // Filters out High Liquidity Tokens and extra Routes if max length is exceeded
+  return filterPaths(paths, [...highLiqTokens, toToken], MAX_ROUTES);
 }
 
 // Filters out 2 Hop Paths until MaxLength is not surpassed
-function filterPaths(paths: Route[][], maxLength: number): Route[][] {
-  const itemsToRemove: number = paths.length - maxLength;
-  let filteredArray: Route[][] = [];
-  let count = 0;
-  for (let i = 0; i < paths.length; i++) {
-    const path: Route[] = paths[i];
-    if (count < itemsToRemove) {
-      if (path.length == 1) filteredArray.push(path);
-      // Skip tokens with more than 1 hop
-      else count++;
-    } else filteredArray.push(path);
+function filterPaths(
+  paths: Route[][],
+  highLiqTokens: string[],
+  maxLength: number
+): Route[][] {
+  paths = paths.filter((routes: Route[]) =>
+    routes.every(
+      (r: Route) =>
+        highLiqTokens.includes(r.to.toLowerCase()) &&
+        highLiqTokens.includes(r.to.toLowerCase())
+    )
+  );
+  if (paths.length > maxLength) {
+    const itemsToRemove: number = paths.length - maxLength;
+    let filteredArray: Route[][] = [];
+    let count = 0;
+    for (let i = 0; i < paths.length; i++) {
+      const path: Route[] = paths[i];
+      if (count < itemsToRemove) {
+        if (path.length == 1) filteredArray.push(path);
+        // Ignore tokens with more than 1 hop
+        else count++;
+      } else filteredArray.push(path);
+    }
+    paths = filteredArray;
   }
-  return filteredArray;
+  return paths;
 }
 
 /**
