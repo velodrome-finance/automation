@@ -7,7 +7,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 
-import { WEEK, DAY, TxData } from "../relay-automation/utils/constants";
+import { DAY, TxData } from "../relay-automation/utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 import jsonOutput from "../../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
 
@@ -15,7 +15,6 @@ async function encodeDistributionCalls(
   voterAddr: string,
   minterAddr: string,
   minterFunction: string,
-  shouldRebase: boolean,
   provider: Provider
 ): Promise<TxData[]> {
   let txData: TxData[] = [];
@@ -42,8 +41,7 @@ async function encodeDistributionCalls(
   );
   const poolLength: BigNumber = await v1Voter.length();
 
-  // TODO: Probably process 1 distribute per call
-  // or perhaps one call per gauge? if not too gas intensive
+  // TODO: Perhaps process one call per gauge? if not too gas intensive
   // Distributes in batches of 10 but will probably change to 1 gauge per batch
   txData = txData.concat(
     [...Array(poolLength.toNumber()).keys()]
@@ -60,20 +58,6 @@ async function encodeDistributionCalls(
           } as TxData)
       )
   );
-
-  if (shouldRebase) {
-    const sinkManager: Contract = new Contract(
-      jsonOutput.SinkManager,
-      ["function claimRebaseAndGaugeRewards()"],
-      provider
-    );
-    txData.push({
-      to: sinkManager.address,
-      data: sinkManager.interface.encodeFunctionData(
-        "claimRebaseAndGaugeRewards()"
-      ),
-    } as TxData);
-  }
   return txData;
 }
 
@@ -117,7 +101,6 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
         jsonConstants.v1.Voter,
         jsonConstants.v1.Minter,
         "update_period()",
-        false,
         provider
       )
     );
@@ -128,10 +111,22 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
         jsonOutput.Voter,
         jsonOutput.Minter,
         "updatePeriod()",
-        true,
         provider
       )
     );
+
+    // Encoding SinkManager Claim and Rebase
+    const sinkManager: Contract = new Contract(
+      jsonOutput.SinkManager,
+      ["function claimRebaseAndGaugeRewards()"],
+      provider
+    );
+    txData.push({
+      to: sinkManager.address,
+      data: sinkManager.interface.encodeFunctionData(
+        "claimRebaseAndGaugeRewards()"
+      ),
+    } as TxData);
 
     // Saves the latest Distribution's Timestamp
     const timestamp = (await provider.getBlock("latest")).timestamp;
