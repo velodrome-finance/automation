@@ -98,23 +98,13 @@ async function getRewardBalances(
   tokens: Contract[][]
 ): Promise<BigNumber[][]> {
   let prevBalances: BigNumber[][] = [];
-  console.log("Will Log Reward Balances now");
   for (let i = 0; i < rewardAddrs.length; i++) {
     const rewardAddr: string = rewardAddrs[i];
-    console.log(
-      `=========== Current Reward: ${rewardAddr} [ Before Txs ] ===========`
-    );
     const rewardTokens: Contract[] = tokens[i];
-    console.log("REWARDS LENGTH %d", rewardTokens.length);
     // Fetch Balances on FeeRewards Contract
     let balances: BigNumber[] = await Promise.all(
       rewardTokens.map((token) => token.balanceOf(rewardAddr))
     );
-    for (const i in rewardTokens) {
-      const token = rewardTokens[i];
-      const bal = balances[i];
-      console.log(`TOKEN: ${token.address}; BALANCE ->> ${bal.toString()}`);
-    }
     prevBalances.push(balances);
   }
   return prevBalances;
@@ -131,27 +121,19 @@ async function assertRewardBalances(
   for (let i = 0; i < rewardAddrs.length; i++) {
     const rewardAddr: string = rewardAddrs[i];
     const rewardTokens: Contract[] = tokens[i];
-    console.log(
-      `=========== Current Reward: ${rewardAddr} [ After Txs ]===========`
-    );
     let oldBalances: BigNumber[] = prevBalances[i];
     let balances: BigNumber[] = await Promise.all(
       rewardTokens.map((token) => token.balanceOf(rewardAddr))
     );
     for (const i in balances) {
       const oldBal: BigNumber = oldBalances[i];
-      const token: Contract = rewardTokens[i];
       const bal: BigNumber = balances[i];
-      console.log(`TOKEN: ${token.address}; BALANCE ->> ${bal.toString()}`);
       tokenCount++;
       if (bal.gt(oldBal)) counting++;
-      console.log(`IS EQUAL? ${bal.eq(oldBal)}`);
       expect(bal).to.gte(oldBal);
     }
-    // Balances of some tokens have increased due to distribution
-    console.log(counting);
-    console.log(tokenCount);
   }
+  // Balances of some tokens have increased due to distribution
   expect(counting).to.gt(tokenCount / 3);
 }
 
