@@ -50,7 +50,7 @@ async function encodeDistributionCalls(
   const poolLength: BigNumber = await voter.length();
 
   // TODO: Perhaps process one call per gauge? if not too gas intensive
-  // Distributes in batches of 10 but will probably change to 1 gauge per batch
+  // Distributes in batches of 10 but change to 1 gauge per batch
   txData = txData.concat(
     [...Array(poolLength.toNumber()).keys()]
       .filter((i: number) => i % 10 == 0)
