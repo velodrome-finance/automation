@@ -31,6 +31,7 @@ const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const OPTIMISM_RPC = process.env.OPTIMISM_RPC;
 assert.ok(OPTIMISM_RPC, "no Optimism RPC url in process.env");
 const BLOCK_NUMBER = Number(process.env.KEEPER_TEST_BLOCK);
+// const BLOCK_NUMBER = Number(process.env.DISTRIBUTION_TEST_BLOCK); // Uncomment to test distribution
 assert.ok(BLOCK_NUMBER, "no Block Number set in process.env");
 
 // ================================= CONFIG =========================================
@@ -51,7 +52,7 @@ const config: HardhatUserConfig = {
 
   paths: {
     sources: "./lib/relay-private/src/",
-    // sources: "./lib/relay-private/lib/contracts/contracts/", // To test Distribution
+    // sources: "./lib/relay-private/lib/contracts/contracts/", // Uncomment to test Distribution
   },
   mocha: {
     timeout: 100000000,
@@ -62,7 +63,6 @@ const config: HardhatUserConfig = {
       forking: {
         url: OPTIMISM_RPC,
         blockNumber: BLOCK_NUMBER,
-        // blockNumber: 111037511, // Before UpdatePeriod is called, to test Distribution
       },
     },
 

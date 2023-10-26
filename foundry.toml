@@ -1,5 +1,5 @@
 [profile.default]
-# src = "./lib/relay-private/lib/contracts/contracts/" # To test Distribution
+# src = "./lib/relay-private/lib/contracts/contracts/" # Uncomment to test Distribution
 src = "./lib/relay-private/src/"
 out = "out"
 libs = ["lib"]
