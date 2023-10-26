@@ -46,6 +46,7 @@ const config: HardhatUserConfig = {
 
   paths: {
     sources: "./lib/relay-private/src/",
+    // sources: "./lib/relay-private/lib/contracts/contracts/", // To test Distribution
   },
   mocha: {
     timeout: 100000000,
@@ -57,6 +58,7 @@ const config: HardhatUserConfig = {
         url: "https://opt-mainnet.g.alchemy.com/v2/UV9ABpPS4L_YK3WvHGAEePtxGDUixAGD",
         blockNumber: 110767452, // Before Claim
         // blockNumber: 110767459, // After Claim
+        // blockNumber: 111037511, // Before UpdatePeriod is called, to test Distribution
       },
     },
 
