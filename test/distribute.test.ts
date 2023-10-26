@@ -140,9 +140,11 @@ describe("Distribute Automation Tests", function () {
     let lastUpdateV1 = await v1Minter.active_period();
     await time.increaseTo((lastUpdate).toNumber() + WEEK + 1);
 
+    // Gets Distribution data for Distributions
     const [v2FeeRewardsAddrs, v2Tokens]: [string[], Contract[][]] = await getV2DistributionData(voter, v2Pools);
     const [v1Gauges, v1Tokens]: [string[], Contract[][]] = await getV1DistributionData(v1Voter, v1Pools);
 
+    // Gets Current Reward balances
     const prevV2Balances: BigNumber[][] = await getRewardBalances(v2FeeRewardsAddrs, v2Tokens);
     const prevV1Balances: BigNumber[][] = await getRewardBalances(v1Gauges, v1Tokens);
     const oldSinkManagerBalance: BigNumber = await escrow.balanceOfNFT(BigNumber.from(jsonOutput.ownedTokenId));
@@ -150,6 +152,7 @@ describe("Distribute Automation Tests", function () {
     const { result } = await distributeScript.run();
     expect(result.canExec).to.equal(true);
 
+    // Broadcasts Distribution Txs
     for (let call of result.callData)
       await owner.sendTransaction({ to: call.to, data: call.data });
 
@@ -160,10 +163,37 @@ describe("Distribute Automation Tests", function () {
     expect(newUpdateV1.toNumber()).to.gt(lastUpdateV1.toNumber());
     expect(newUpdate.toNumber()).to.eq(newUpdateV1.toNumber());
 
+    // Assert that Reward COntract's balances has changed after Distributions
     await assertRewardBalances(v2FeeRewardsAddrs, v2Tokens, prevV2Balances);
     await assertRewardBalances(v1Gauges, v1Tokens, prevV1Balances);
-
     const newSinkBal = await escrow.balanceOfNFT(BigNumber.from(jsonOutput.ownedTokenId));
     expect(newSinkBal).to.gt(oldSinkManagerBalance);
+  });
+  it("Cannot execute if LastDistribution has happened in same epoch", async () => {
+    let timestamp = await time.latest();
+    const startOfNextEpoch =
+      timestamp - (timestamp % (WEEK)) + WEEK;
+
+    let storageBefore = distributeScript.getStorage();
+    // Setting Last run as the start of Next Epoch
+    storageBefore["lastDistribution"] = startOfNextEpoch.toString();
+    await time.increaseTo(startOfNextEpoch);
+    let run = await distributeScript.run();
+    let result = run.result;
+    // Cannot exec if last run happened in same epoch
+    expect(result.canExec).to.equal(false);
+
+    await time.increase(WEEK); // Skipping until the last Timestamp of the Epoch
+    run = await distributeScript.run();
+    result = run.result;
+    // Cannot exec for whole epoch, as previous execution happened in it
+    expect(result.canExec).to.equal(false);
+
+    // Can exec if last run happened in Previous Epoch
+    await time.increase(1); // Skipping to start of Second day
+    run = await distributeScript.run();
+    result = run.result;
+    // Can exec from the start of Second Day
+    expect(result.canExec).to.equal(true);
   });
 });
