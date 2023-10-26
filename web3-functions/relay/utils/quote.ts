@@ -139,7 +139,7 @@ export async function fetchQuote(
     ],
     provider
   );
-  amount = BigNumber.from(10).pow(10); // TODO: Remove this after fix
+  amount = BigNumber.from(10).pow(10);
 
   let quoteChunks = [];
   // Split into chunks and get the route quotes...
