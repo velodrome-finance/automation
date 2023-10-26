@@ -140,7 +140,7 @@ async function encodeSwapFromTokens(
         poolsByAddress,
         token.toLowerCase(),
         VELO.toLowerCase(),
-        highLiqTokens.map((token) => token.toLowerCase()),
+        highLiqTokens.map((token) => token.toLowerCase())
       ),
       bal,
       provider

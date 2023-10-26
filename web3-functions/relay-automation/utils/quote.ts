@@ -122,13 +122,23 @@ export function getRoutes(
   });
 
   // Filters out High Liquidity Tokens and extra Routes if max length is exceeded
-  return filterPaths(paths, [ ...highLiqTokens, toToken ], MAX_ROUTES);
+  return filterPaths(paths, [...highLiqTokens, toToken], MAX_ROUTES);
 }
 
 // Filters out 2 Hop Paths until MaxLength is not surpassed
-function filterPaths(paths: Route[][], highLiqTokens: string[], maxLength: number): Route[][] {
-  paths = paths.filter((routes: Route[]) => routes.every((r: Route) => highLiqTokens.includes(r.to.toLowerCase()) && highLiqTokens.includes(r.to.toLowerCase())));
-  if(paths.length > maxLength) {
+function filterPaths(
+  paths: Route[][],
+  highLiqTokens: string[],
+  maxLength: number
+): Route[][] {
+  paths = paths.filter((routes: Route[]) =>
+    routes.every(
+      (r: Route) =>
+        highLiqTokens.includes(r.to.toLowerCase()) &&
+        highLiqTokens.includes(r.to.toLowerCase())
+    )
+  );
+  if (paths.length > maxLength) {
     const itemsToRemove: number = paths.length - maxLength;
     let filteredArray: Route[][] = [];
     let count = 0;
