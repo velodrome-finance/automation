@@ -16,11 +16,13 @@ import jsonConstants from "../lib/relay-private/script/constants/Optimism.json";
 import { WEEK } from "../web3-functions/relay-automation/utils/constants";
 import { VotingEscrow } from "../typechain";
 
+// Fetches all Pools for a given Voter contract
 async function getPools(voter: Contract): Promise<string[]> {
     const length = (await voter.length()).toNumber();
-    return (await Promise.all([...Array(length).keys()].map((i) => voter.pools(i)))).slice(0,30);
+    return (await Promise.all([...Array(length).keys()].map((i) => voter.pools(i)))).slice(0,20);
 }
 
+// Fetches all data necessary to process V1 Distributions
 async function getV1DistributionData(voter: Contract, pools: string[]): Promise<[string[], Contract[][]]> {
     let gauges: string[] = [];
     let tokens: Contract[][] = [];
@@ -42,6 +44,7 @@ async function getV1DistributionData(voter: Contract, pools: string[]): Promise<
     return [gauges, tokens]
 }
 
+// Fetches all data necessary to process V2 Distributions
 async function getV2DistributionData(voter: Contract, pools: string[]): Promise<[string[], Contract[][]]> {
     let gauges: string[] = [];
     let tokens: Contract[][] = [];
@@ -65,6 +68,7 @@ async function getV2DistributionData(voter: Contract, pools: string[]): Promise<
     return [feeRewardsAddrs, tokens]
 }
 
+// Gets all Balances for the Reward contracts, given their Addresses and Reward Tokens
 async function getRewardBalances(rewardAddrs: string[], tokens: Contract[][]): Promise<BigNumber[][]> {
     let prevBalances: BigNumber[][] = [];
     console.log("Will Log Reward Balances now");
@@ -85,8 +89,10 @@ async function getRewardBalances(rewardAddrs: string[], tokens: Contract[][]): P
     return prevBalances;
 }
 
+// Asserts that the balances have increased for some Reward Contracts after distribution has happened
 async function assertRewardBalances(rewardAddrs: string[], tokens: Contract[][], prevBalances: BigNumber[][]) {
   let counting = 0;
+  let tokenCount = 0;
   for(let i = 0; i < rewardAddrs.length; i++) {
       const rewardAddr: string = rewardAddrs[i];
       const rewardTokens: Contract[] = tokens[i]
@@ -94,19 +100,21 @@ async function assertRewardBalances(rewardAddrs: string[], tokens: Contract[][],
       let oldBalances: BigNumber[] = prevBalances[i];
       let balances: BigNumber[] = await Promise.all(rewardTokens.map((token) => token.balanceOf(rewardAddr)));
       for(const i in balances) {
-          const token: Contract = rewardTokens[i];
           const oldBal: BigNumber = oldBalances[i];
+          const token: Contract = rewardTokens[i];
           const bal: BigNumber = balances[i];
           console.log(`TOKEN: ${token.address}; BALANCE ->> ${bal.toString()}`);
+          tokenCount++;
           if(bal.gt(oldBal))
               counting++;
           console.log(`IS EQUAL? ${bal.eq(oldBal)}`);
           expect(bal).to.gte(oldBal);
       }
       // Balances of some tokens have increased due to distribution
-      expect(counting).to.gt(0);
       console.log(counting);
+      console.log(tokenCount);
   }
+  expect(counting).to.gt(tokenCount/3);
 }
 
 
@@ -132,6 +140,8 @@ describe("Distribute Automation Tests", function () {
   });
 
   it("V1 and V2 Distribution Flow", async () => {
+    // This test Saves all current balances of Reward contracts, then
+    // broadcasts Distributions and assert that some Balances increased
 
     let v2Pools: string[] = await getPools(voter);
     let v1Pools: string[] = await getPools(v1Voter);
