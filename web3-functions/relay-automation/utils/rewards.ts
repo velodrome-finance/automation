@@ -36,7 +36,6 @@ export async function getClaimCalls(
   let rewards = await getRewards(mTokenId, relay.provider, offset, storage);
 
   // Claim Fees
-  // TODO: should limit the amount of claims per call
   let rewardAddrs: string[] = Object.keys(rewards.fee);
   if (rewardAddrs.length != 0)
     calls.push(

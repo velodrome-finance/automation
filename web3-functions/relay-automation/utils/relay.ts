@@ -12,7 +12,6 @@ export async function canRunInCurrentEpoch(provider, storage): Promise<boolean> 
   const keeperLastRun: number = Number((await storage.get("keeperLastRun")) ?? "");
   const startOfLastRunEpoch: number = keeperLastRun - (keeperLastRun % (7 * DAY));
 
-  //TODO: refactor DAY to HOUR
   // Can only run Once per Epoch and only after its First Hour
   return (!keeperLastRun || (startOfCurrentEpoch != startOfLastRunEpoch && timestamp > startOfCurrentEpoch + DAY));
 }
@@ -38,11 +37,9 @@ export async function setUpInitialStorage(
 ) {
   // Get All Factories from Registry
   let factoriesQueue = await getFactoriesFromRegistry(RELAY_REGISTRY_ADDRESS, provider);
-  // TODO: delete this
   factoriesQueue = factoriesQueue.slice(0,1);
   const currFactory = factoriesQueue[0] ?? "";
   factoriesQueue = factoriesQueue.slice(1);
-  // TODO: handle multiple factories, as right now this only handles autocompounder
   let factory = new Contract(
     currFactory,
     ["function relays() view returns (address[] memory)"],
