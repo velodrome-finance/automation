@@ -72,14 +72,14 @@ async function encodeAutoConverterSwap(
   let tokensQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
   queue = (await storage.get("balancesQueue")) ?? "";
   let balancesQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
+  const highLiqTokens = await factory.highLiquidityTokens();
 
   // Set current Stage and Initial Tokens Queue
   if (tokensQueue.length == 0) {
     // processing of swaps hasn't started
     await storage.set("currStage", SWAP_STAGE);
-    tokensQueue = await factory.highLiquidityTokens();
     ({ tokens: tokensQueue, balances: balancesQueue } =
-      await filterHighLiqTokens(relayAddr, tokensQueue, provider));
+      await filterHighLiqTokens(relayAddr, highLiqTokens, provider));
   }
 
   // Process next Swap from Tokens Queue
@@ -87,6 +87,7 @@ async function encodeAutoConverterSwap(
     relayAddr,
     tokensQueue,
     balancesQueue,
+    highLiqTokens,
     storage,
     provider
   );
@@ -97,6 +98,7 @@ async function encodeSwapFromTokens(
   relayAddr: string,
   tokensQueue: string[],
   balancesQueue: string[],
+  highLiqTokens: string[],
   storage,
   provider: Provider
 ): Promise<string> {
@@ -118,7 +120,8 @@ async function encodeSwapFromTokens(
         poolsGraph,
         poolsByAddress,
         token.toLowerCase(),
-        targetToken.toLowerCase()
+        targetToken.toLowerCase(),
+        highLiqTokens.map((token) => token.toLowerCase())
       ),
       bal,
       provider
