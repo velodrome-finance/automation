@@ -7,9 +7,16 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 
-import { DAY, HOUR, TxData } from "../relay-automation/utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 import jsonOutput from "../../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
+
+const HOUR = 60 * 60;
+const DAY = 24 * HOUR;
+
+type TxData = {
+  to: string;
+  data: string;
+};
 
 async function encodeDistributionCalls(
   voterAddr: string,
@@ -85,6 +92,8 @@ export async function canRunInCurrentEpoch(
   );
 }
 
+// Script to Automate V1 and V2 Distributions. Transactions are encoded in the order below
+// v1 Update Period > v1 Distribute > v2 Update Period > v2 Distribute > SinkManager Claim
 Web3Function.onRun(async (context: Web3FunctionContext) => {
   const { multiChainProvider, storage } = context;
   const provider = multiChainProvider.default();
@@ -96,7 +105,6 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
     if (!(await canRunInCurrentEpoch(provider, storage)))
       return { canExec: false, message: `Too Soon for Execution` };
 
-    // v1 Update Period > v1 Distribute > v2 Update Period > v2 Distribute > SinkClaim
     // Encoding V1 Distribution transactions
     txData = txData.concat(
       await encodeDistributionCalls(
