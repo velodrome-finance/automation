@@ -103,7 +103,6 @@ describe("Automation Script Tests", function () {
     await stopImpersonatingAccount(allowedManager);
 
     // Create multiple AutoCompounders and save their mTokenId's
-    //TODO: Move AutoCompounderId to constants
     mTokens.push(BigNumber.from(19041)); // On-Chain AutoCompounder's TokenID from current block
     for (let i = 0; i < RELAYS_TO_TEST; i++)
       mTokens.push(
@@ -127,7 +126,6 @@ describe("Automation Script Tests", function () {
 
     relayW3f = w3f.get("relay-automation");
 
-    // // TODO: Should I uncomment this caching?
     // Warm up hardhat cache for lpSugar calls
     const lpSugarContract = await ethers.getContractAt(
       lpSugarAbi,
