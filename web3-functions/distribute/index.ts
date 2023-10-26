@@ -38,21 +38,38 @@ async function encodeDistributionCalls(voterAddr: string, minterAddr: string, mi
     return txData;
 }
 
+// Verifies if script can run in Current Epoch
+export async function canRunInCurrentEpoch(
+  provider,
+  storage
+): Promise<boolean> {
+  const timestamp = (await provider.getBlock("latest")).timestamp;
+  const startOfCurrentEpoch: number = timestamp - (timestamp % (7 * DAY));
+  const keeperLastRun: number = Number(
+    (await storage.get("lastDistribution")) ?? ""
+  );
+  const startOfLastRunEpoch: number =
+    keeperLastRun - (keeperLastRun % (7 * DAY));
+
+  // Distributions are only ran once per Epoch
+  //TODO: Should I only allow distributions before end of first hour?
+  return (
+    !keeperLastRun ||
+    (startOfCurrentEpoch != startOfLastRunEpoch &&
+      timestamp > startOfCurrentEpoch)
+  );
+}
+
 Web3Function.onRun(async (context: Web3FunctionContext) => {
-  const { multiChainProvider } = context;
+  const { multiChainProvider, storage } = context;
   const provider = multiChainProvider.default();
 
   let txData: TxData[] = [];
 
   try {
-    const timestamp = (await provider.getBlock("latest")).timestamp;
-    console.log(`Timestamp is ${timestamp}`);
-    // TODO: maybe make new utils folder for this script to save constants
-    let firstDayEnd = timestamp - (timestamp % WEEK) + DAY;
-
     // Can only run on First Day of Epoch
-    // if (firstDayEnd < timestamp)
-    //   return { canExec: false, message: `Not first day` };
+    if (!(await canRunInCurrentEpoch(provider, storage)))
+      return { canExec: false, message: `Too Soon for Execution` };
 
     // v1 Update Period > v1 Distribute > v2 Update Period > v2 Distribute > SinkClaim
     // Encoding V1 Distribution transactions
@@ -61,6 +78,8 @@ Web3Function.onRun(async (context: Web3FunctionContext) => {
 
     // // Encoding V2 Distribution transactions
     txData = txData.concat(await encodeDistributionCalls(jsonOutput.Voter, jsonOutput.Minter, "updatePeriod()", true, provider));
+    const timestamp = (await provider.getBlock("latest")).timestamp;
+    await storage.set("lastDistribution", timestamp.toString());
   } catch (err) {
       console.log(err);
     return { canExec: false, message: `Rpc call failed ${err}` };
