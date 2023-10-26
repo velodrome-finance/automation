@@ -18,6 +18,7 @@ type TxData = {
   data: string;
 };
 
+// Encodes Minter's UpdatePeriod and Voter's Distributions
 async function encodeDistributionCalls(
   voterAddr: string,
   minterAddr: string,
@@ -27,18 +28,18 @@ async function encodeDistributionCalls(
   let txData: TxData[] = [];
 
   // Minter Update Period
-  const v1Minter: Contract = new Contract(
+  const minter: Contract = new Contract(
     minterAddr,
     [`function ${minterFunction} external returns (uint256)`],
     provider
   );
   txData.push({
     to: minterAddr,
-    data: v1Minter.interface.encodeFunctionData(minterFunction),
+    data: minter.interface.encodeFunctionData(minterFunction),
   } as TxData);
 
   // Distributing to Gauges
-  const v1Voter: Contract = new Contract(
+  const voter: Contract = new Contract(
     voterAddr,
     [
       "function distribute(uint256 _start, uint256 _finish)",
@@ -46,7 +47,7 @@ async function encodeDistributionCalls(
     ],
     provider
   );
-  const poolLength: BigNumber = await v1Voter.length();
+  const poolLength: BigNumber = await voter.length();
 
   // TODO: Perhaps process one call per gauge? if not too gas intensive
   // Distributes in batches of 10 but will probably change to 1 gauge per batch
@@ -58,7 +59,7 @@ async function encodeDistributionCalls(
         (i) =>
           ({
             to: voterAddr,
-            data: v1Voter.interface.encodeFunctionData(
+            data: voter.interface.encodeFunctionData(
               "distribute(uint256,uint256)",
               [i, i + 10]
             ),
