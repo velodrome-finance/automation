@@ -13,7 +13,7 @@ import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.j
 import { Minter } from "../typechain/relay-private/lib/contracts/contracts/Minter";
 import { Voter } from "../typechain/relay-private/lib/contracts/contracts/Voter";
 import jsonConstants from "../lib/relay-private/script/constants/Optimism.json";
-import { WEEK } from "../web3-functions/relay-automation/utils/constants";
+import { HOUR, WEEK } from "../web3-functions/relay-automation/utils/constants";
 import { VotingEscrow } from "../typechain";
 
 // Fetches all Pools for a given Voter contract
@@ -188,22 +188,29 @@ describe("Distribute Automation Tests", function () {
     // Setting Last run as the start of Next Epoch
     storageBefore["lastDistribution"] = startOfNextEpoch.toString();
     await time.increaseTo(startOfNextEpoch);
-    let run = await distributeScript.run();
+    let run = await distributeScript.run({storage: storageBefore});
     let result = run.result;
     // Cannot exec if last run happened in same epoch
     expect(result.canExec).to.equal(false);
 
     await time.increase(WEEK); // Skipping until the last Timestamp of the Epoch
-    run = await distributeScript.run();
+    run = await distributeScript.run({storage: storageBefore});
     result = run.result;
     // Cannot exec for whole epoch, as previous execution happened in it
     expect(result.canExec).to.equal(false);
 
     // Can exec if last run happened in Previous Epoch
     await time.increase(1); // Skipping to start of Second day
-    run = await distributeScript.run();
+    run = await distributeScript.run({storage: storageBefore});
     result = run.result;
     // Can exec from the start of Second Day
     expect(result.canExec).to.equal(true);
+
+    // Cannot exec if after Epoch's first Hour
+    await time.increase(HOUR); // Skipping to start of Second Hour
+    run = await distributeScript.run({storage: storageBefore});
+    result = run.result;
+    // Can no longer Execute as first Hour was missed
+    expect(result.canExec).to.equal(false);
   });
 });

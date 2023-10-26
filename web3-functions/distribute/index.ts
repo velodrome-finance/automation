@@ -7,7 +7,7 @@ import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 
-import { DAY, TxData } from "../relay-automation/utils/constants";
+import { DAY, HOUR, TxData } from "../relay-automation/utils/constants";
 import jsonConstants from "../../lib/relay-private/script/constants/Optimism.json";
 import jsonOutput from "../../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
 
@@ -75,11 +75,13 @@ export async function canRunInCurrentEpoch(
     keeperLastRun - (keeperLastRun % (7 * DAY));
 
   // Distributions are only ran once per Epoch
-  //TODO: Should I only allow distributions before end of first hour?
+  // And they should take place during its first Hour
+  //TODO: Should I allow distributions after the end of first hour?
   return (
     !keeperLastRun ||
     (startOfCurrentEpoch != startOfLastRunEpoch &&
-      timestamp > startOfCurrentEpoch)
+      timestamp > startOfCurrentEpoch &&
+      timestamp <= startOfCurrentEpoch + HOUR)
   );
 }
 
