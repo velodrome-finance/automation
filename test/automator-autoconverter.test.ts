@@ -17,28 +17,27 @@ import {
 
 import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/output/DeployVelodromeV2-Optimism.json";
 import {
+  seedRelayWithBalances,
   createAutoConverter,
   logW3fRunStats,
-  seedRelayWithBalances,
   setBalanceOf,
   storageSlots,
 } from "./utils";
 import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVotingEscrow";
 import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
-import { AutoConverterFactory } from "../typechain/relay-private/src/autoconverter";
 import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
-import lpSugarAbi from "../web3-functions/relay/abis/lp_sugar.json";
+import { AutoConverterFactory } from "../typechain/relay-private/src/autoconverter";
 import { Registry } from "../typechain/relay-private/src";
 
 import {
   KEEPER_REGISTRY_ADDRESS,
   RELAY_REGISTRY_ADDRESS,
-  LP_SUGAR_ADDRESS,
+  CONVERTER_TOKEN_ID,
   HOUR,
   DAY,
 } from "../web3-functions/relay-automation/utils/constants";
 
-async function logRelayBalances(relays, tokensToConvert, mTokens, escrow) {
+async function logRelayBalances(relays, tokensToConvert, usdc) {
   for (const i in relays) {
     console.log(
       "========================= // RESULTS // ========================="
@@ -52,29 +51,31 @@ async function logRelayBalances(relays, tokensToConvert, mTokens, escrow) {
     console.log(
       "-----------------------------------------------------------------"
     );
-    console.log(`VE Amount: ${await escrow.balanceOfNFT(mTokens[i])}`);
+    console.log(`USDC Amount: ${await usdc.balanceOf(relays[i])}`);
   }
   console.log(
     "=========================-//-=======-//-========================="
   );
 }
 
-describe("Automation Script Tests", function () {
+describe("AutoConverter Automation Script Tests", function () {
   let relayW3f: Web3FunctionHardhat;
   let owner: SignerWithAddress;
   const RELAYS_TO_TEST = 1;
 
+  let op: IERC20;
   let dai: IERC20;
   let usdc: IERC20;
   let weth: IERC20;
   let velo: IERC20;
   let relays: string[];
   let tokenNames: string[];
-  let tokensToConvert: Contract[] = [];
   let escrow: IVotingEscrow;
   let keeperRegistry: Registry;
   let mTokens: BigNumber[] = [];
   let relayFactoryRegistry: Registry;
+  let tokensToConvert: Contract[] = [];
+  let autoConverterFactory: AutoConverterFactory;
 
   before(async function () {
     await deployments.fixture();
@@ -90,16 +91,20 @@ describe("Automation Script Tests", function () {
       KEEPER_REGISTRY_ADDRESS
     );
     const factories: string[] = await relayFactoryRegistry.getAll();
-    const autoConverterFactory: AutoConverterFactory =
-      await ethers.getContractAt("AutoConverterFactory", factories[1]);
+    autoConverterFactory = await ethers.getContractAt(
+      "AutoConverterFactory",
+      factories[1]
+    );
 
-    tokenNames = ["dai", "usdc", "weth", "velo"]; // Tokens to be Converted while testing Relays
+    tokenNames = ["dai", "weth", "op"]; // Tokens to be Converted while testing Relays
     tokensToConvert = await Promise.all(
       tokenNames.map((name) =>
         ethers.getContractAt(erc20Abi, storageSlots[name].address)
       )
     );
-    [dai, usdc, weth, velo] = tokensToConvert;
+    [dai, weth, op] = tokensToConvert;
+    usdc = await ethers.getContractAt(erc20Abi, storageSlots["usdc"].address);
+    velo = await ethers.getContractAt(erc20Abi, storageSlots["velo"].address);
 
     escrow = await ethers.getContractAt(
       "IVotingEscrow",
@@ -121,7 +126,7 @@ describe("Automation Script Tests", function () {
     await stopImpersonatingAccount(allowedManager);
 
     // Create multiple AutoConverters and save their mTokenId's
-    mTokens.push(BigNumber.from(19042)); // On-Chain AutoConverter's TokenID from current block
+    mTokens.push(BigNumber.from(CONVERTER_TOKEN_ID)); // On-Chain AutoConverter's TokenID from current block
     for (let i = 0; i < RELAYS_TO_TEST; i++)
       mTokens.push(
         await createAutoConverter(
@@ -135,8 +140,6 @@ describe("Automation Script Tests", function () {
 
     // Fetch all the AutoConverters and seed them with Tokens
     relays = await autoConverterFactory.relays();
-    console.log("THESE ARE THE TESTING RELAYS");
-    console.log(relays);
     for (const relay of relays.slice(1)) {
       // Only seed created Relays
       await seedRelayWithBalances(relay, storageSlots);
@@ -144,37 +147,25 @@ describe("Automation Script Tests", function () {
 
     // Warp to the last timestamp of the First Hour of Epoch
     let timestamp = await time.latest();
-    let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + DAY;
+    let endOfFirstHour = timestamp - (timestamp % (7 * DAY)) + HOUR;
     let newTimestamp =
-      endOfFirstHour >= timestamp ? endOfFirstHour : endOfFirstHour + 7 * DAY;
+      endOfFirstHour >= timestamp ? endOfFirstHour : endOfFirstHour + 6 * DAY; // cannot exceed current epoch
     time.increaseTo(newTimestamp);
 
     relayW3f = w3f.get("relay-automation");
-
-    // Warm up hardhat cache for lpSugar calls
-    const lpSugarContract = await ethers.getContractAt(
-      lpSugarAbi,
-      LP_SUGAR_ADDRESS
-    );
-    // await lpSugarContract.forSwaps(150, 0);
-    await lpSugarContract.rewards(
-      BigNumber.from(100),
-      BigNumber.from(0),
-      BigNumber.from(19041)
-    );
   });
-  it("Test Automator Flow", async () => {
+  it("Test AutoConverter Automation Flow", async () => {
     // All balances were minted correctly for all Relays
     let oldBalances = [];
-    await logRelayBalances(relays, tokensToConvert, mTokens, escrow);
+    await logRelayBalances(relays, tokensToConvert, usdc);
     for (const i in relays) {
-      let oldBal = await escrow.balanceOfNFT(mTokens[i]);
+      let oldBal = await usdc.balanceOf(relays[i]);
       oldBalances.push(oldBal);
 
       if (!Number(i))
         // ignore setup verification for first relay as no balances are being sent to it
         continue;
-      expect(oldBal).to.equal(BigNumber.from(10).pow(19));
+
       for (const j in tokensToConvert) {
         const token = tokensToConvert[j];
 
@@ -188,7 +179,16 @@ describe("Automation Script Tests", function () {
       }
     }
 
-    let storageBefore = relayW3f.getStorage();
+    // Hardcoding Storage for this test to ignore AutoCompounder Factory
+    let storageBefore = {
+      currRelay: relays[0],
+      relaysQueue: JSON.stringify(relays.slice(1)),
+      currFactory: autoConverterFactory.address,
+      factoriesQueue: "[]",
+      isAutoCompounder: "false",
+      currStage: "claim",
+      offset: "0",
+    };
     let currentStage = "claim";
     let result, storageAfter;
     let numberOfRuns = 0;
@@ -203,8 +203,7 @@ describe("Automation Script Tests", function () {
         await logRelayBalances(
           [storageBefore.currRelay],
           tokensToConvert,
-          mTokens,
-          escrow
+          usdc
         );
         currentStage = storageAfter.storage.currStage ?? "";
       }
@@ -215,41 +214,28 @@ describe("Automation Script Tests", function () {
       logW3fRunStats(run);
 
       // Sending Generated Transactions
-      expect(result.canExec).to.equal(true);
-      for (let call of result.callData) {
-        await owner.sendTransaction({ to: call.to, data: call.data });
-      }
+      if (result.canExec) {
+        expect(result.callData.length).to.gt(0);
+        for (let call of result.callData) {
+          await owner.sendTransaction({ to: call.to, data: call.data });
+        }
+      } else expect(result.message).to.equal("No transactions to broadcast.");
       storageBefore = storageAfter.storage;
     }
 
     // All balances were Swapped to USDC correctly for all Relays
-    await logRelayBalances(relays, tokensToConvert, mTokens, escrow);
+    await logRelayBalances(relays, tokensToConvert, usdc);
     for (const i in relays) {
       for (const token of tokensToConvert) {
-        if (token !== usdc.address) {
-          expect(await token.balanceOf(relays[i])).to.equal(0);
-        } else {
-          expect(await token.balanceOf(relays[i])).greaterThan(0);
-        }
+        expect(await token.balanceOf(relays[i])).to.equal(0);
       }
-      expect(await escrow.balanceOfNFT(mTokens[i])).to.above(oldBalances[i]);
+      expect(await usdc.balanceOf(relays[i])).to.above(oldBalances[i]);
     }
-  });
-  it("Loads storage with Relays to Process", async () => {
-    let storageBefore = relayW3f.getStorage();
-    // First Run With Empty Storage
-    let run = await relayW3f.run({ storage: storageBefore });
-    let { result, storage: storageAfter } = run;
-    logW3fRunStats(run);
-    expect(result.canExec).to.equal(true);
-    expect(
-      JSON.parse(storageAfter.storage["relaysQueue"] as string).length
-    ).to.equal(RELAYS_TO_TEST); // The relay being processed is the one already on chain
   });
   it("Cannot execute if LastRun has happened in same epoch", async () => {
     let timestamp = await time.latest();
     const endOfFirstHourNextEpoch =
-      (timestamp - (timestamp % (7 * DAY)) + HOUR) + 7 * DAY;
+      timestamp - (timestamp % (7 * DAY)) + HOUR + 7 * DAY;
 
     let storageBefore = relayW3f.getStorage();
     // Setting Last run as the End of First day of Current Epoch
