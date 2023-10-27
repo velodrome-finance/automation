@@ -49,7 +49,6 @@ async function encodeDistributionCalls(
   );
   const poolLength: BigNumber = await voter.length();
 
-  // TODO: Perhaps process one call per gauge? if not too gas intensive
   // Distributes in batches of 10 but change to 1 gauge per batch
   txData = txData.concat(
     [...Array(poolLength.toNumber()).keys()]
@@ -84,7 +83,6 @@ export async function canRunInCurrentEpoch(
 
   // Distributions are only ran once per Epoch
   // And they should take place during its first Hour
-  //TODO: Should I allow distributions after the end of first hour?
   return (
     !keeperLastRun ||
     (startOfCurrentEpoch != startOfLastRunEpoch &&
