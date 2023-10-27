@@ -30,7 +30,6 @@ const OPTIMISM_RPC = process.env.OPTIMISM_RPC;
 assert.ok(OPTIMISM_RPC, "no Optimism RPC url in process.env");
 const BLOCK_NUMBER = Number(process.env.KEEPER_TEST_BLOCK);
 // const BLOCK_NUMBER = Number(process.env.DISTRIBUTION_TEST_BLOCK); // Uncomment to test distribution
-
 assert.ok(BLOCK_NUMBER, "no Block Number set in process.env");
 
 // ================================= CONFIG =========================================
