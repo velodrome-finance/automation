@@ -1,9 +1,12 @@
 {
   "overrides": [
     {
-      "files": "*.sol",
+      "files": "**.ts",
       "options": {
-        "compiler": "0.8.17"
+        "printWidth": 80,
+        "tabWidth": 2,
+        "useTabs": false,
+        "bracketSpacing": true
       }
     }
   ]

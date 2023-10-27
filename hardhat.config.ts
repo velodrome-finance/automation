@@ -5,6 +5,7 @@ import "@gelatonetwork/web3-functions-sdk/hardhat-plugin";
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
+import "@nomicfoundation/hardhat-foundry";
 import "hardhat-deploy";
 import "@matterlabs/hardhat-zksync-solc";
 import "@matterlabs/hardhat-zksync-verify";
@@ -43,11 +44,15 @@ const config: HardhatUserConfig = {
 
   defaultNetwork: "hardhat",
 
+  paths: {
+    sources: "./lib/relay-private/src/",
+  },
+
   networks: {
     hardhat: {
       forking: {
-        url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_ID}`,
-        blockNumber: 8664000,
+        url: "https://opt-mainnet.g.alchemy.com/v2/UV9ABpPS4L_YK3WvHGAEePtxGDUixAGD",
+        blockNumber: 109858334,
       },
     },
 
@@ -131,14 +136,13 @@ const config: HardhatUserConfig = {
   },
 
   solidity: {
-    compilers: [
-      {
-        version: "0.8.17",
-        settings: {
-          optimizer: { enabled: true },
-        },
-      },
-    ],
+    version: "0.8.19",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
   },
 
   typechain: {
