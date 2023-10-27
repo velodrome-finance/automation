@@ -21,7 +21,6 @@ export async function getClaimCalls(
   storage
 ): Promise<string[]> {
   const mTokenId = await relay.mTokenId();
-  let calls = [];
   let offset: number = Number(await storage.get("offset") ?? "");
 
   if(!offset)
@@ -36,24 +35,26 @@ export async function getClaimCalls(
   let rewards = await getRewards(mTokenId, relay.provider, offset, storage);
 
   // Claim Fees
-  let rewardAddrs: string[] = Object.keys(rewards.fee);
-  if (rewardAddrs.length != 0)
-    calls.push(
-      relay.interface.encodeFunctionData("claimFees", [
-        rewardAddrs,
-        Object.values(rewards.fee),
-      ])
-    );
+  const feeCalls = encodeRewards(Object.keys(rewards.fee), Object.values(rewards.fee), "claimFees", relay.interface);
   // Claim Bribes
-  rewardAddrs = Object.keys(rewards.bribe);
-  if (rewardAddrs.length != 0)
+  const bribeCalls = encodeRewards(Object.keys(rewards.bribe), Object.values(rewards.bribe), "claimBribes", relay.interface);
+  return feeCalls.concat(bribeCalls);
+}
+
+// From Reward information, encodes Claim Calls
+function encodeRewards(rewardAddrs: string[], tokenAddrs: string[][], claimFunction: string, abi, batchSize = 3): string[] {
+  let calls: string[] = [];
+  for(let i = 0; i < rewardAddrs.length; i+=batchSize) {
+    // Encodes Claims for different Reward Contracts in batches, to avoid high gas consumption
+    const rewardAddrsBatch: string[] = rewardAddrs.slice(i, i + batchSize);
+    const rewardTokensBatch: string[][] = tokenAddrs.slice(i, i + batchSize);
     calls.push(
-      relay.interface.encodeFunctionData("claimBribes", [
-        rewardAddrs,
-        Object.values(rewards.bribe),
+      abi.encodeFunctionData(claimFunction, [
+        rewardAddrsBatch,
+        rewardTokensBatch,
       ])
     );
-
+  }
   return calls;
 }
 

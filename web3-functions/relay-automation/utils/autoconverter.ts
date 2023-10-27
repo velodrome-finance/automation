@@ -3,22 +3,21 @@ import { Provider } from "@ethersproject/providers";
 import { Contract } from "@ethersproject/contracts";
 import { BigNumber } from "@ethersproject/bignumber";
 
-import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { CLAIM_STAGE, COMPOUND_STAGE, PROCESSING_COMPLETE, SWAP_STAGE, TxData, VELO } from "../utils/constants";
+import { abi as convAbi } from "../../../artifacts/lib/relay-private/src/autoConverter/AutoConverter.sol/AutoConverter.json";
+import { CLAIM_STAGE, PROCESSING_COMPLETE, SWAP_STAGE, TxData } from "../utils/constants";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { getClaimCalls, getPools } from "./rewards";
 
-// Encode AutoCompounder calls, one per Execution
-export async function processAutoCompounder(
+// Encode AutoConverter calls, one per Execution
+export async function processAutoConverter(
     relayAddr: string,
     factoryAddr: string,
     stageName: string,
     storage,
     provider: Provider
 ): Promise<TxData[]> {
-    // Process AutoCompounder
-    const relay = new Contract(relayAddr, compAbi, provider);
-    const abi = relay.interface;
+    // Process AutoConverter
+    const relay = new Contract(relayAddr, convAbi, provider);
 
     let calls: string[] = [];
     // Process Relay Rewards
@@ -32,33 +31,16 @@ export async function processAutoCompounder(
 
     // Process a Swap per Call
     if(stageName == SWAP_STAGE) {// If no Swaps left, next call should be Compound
-      const call = await encodeAutoCompounderSwap(relayAddr, factoryAddr, storage, provider);
-      stageName = await storage.get("currStage"); // Check if Current Stage changed
+      const call = await encodeAutoConverterSwap(relayAddr, factoryAddr, storage, provider);
 
       if(call)
         calls.push(call);
-
-      if(stageName == COMPOUND_STAGE) { // If all swaps were encoded, next stage will be "compound"
-        const bal: BigNumber = await new Contract(
-          VELO,
-          ["function balanceOf(address) view returns (uint256)"],
-          provider
-        ).balanceOf(relayAddr);
-        if(!bal.isZero()) {
-          // if Relay has VELO, compound it
-          calls.push(abi.encodeFunctionData("compound"));
-          if(calls.length > 1)
-            calls = [abi.encodeFunctionData("multicall", [calls])]
-        }
-        await storage.set("currStage", PROCESSING_COMPLETE); // After compounding Relay is processed
-      }
     }
-
     return calls.map((call) => ({to: relay.address, data: call} as TxData));
 }
 
-// Encodes all Swaps for AutoCompounder
-async function encodeAutoCompounderSwap(
+// Encodes all Swaps for AutoConverter
+async function encodeAutoConverterSwap(
     relayAddr: string,
     factoryAddr: string,
     storage,
@@ -92,7 +74,8 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
     await getPools(provider)
   );
 
-  const abi = new Contract(relayAddr, compAbi, provider).interface;
+  const relay = new Contract(relayAddr, convAbi, provider);
+  const abi = relay.interface;
   let call: string = "";
   // Process One Swap per Execution
   const token = tokensQueue.shift();
@@ -101,12 +84,13 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
   let quote;
   if(token) {
     const bal = BigNumber.from(balancesQueue.shift());
+    const targetToken = await relay.token();
     quote = await fetchQuote(
       getRoutes(
         poolsGraph,
         poolsByAddress,
         token.toLowerCase(),
-        VELO.toLowerCase()
+        targetToken.toLowerCase()
       ),
       bal,
       provider
@@ -115,7 +99,7 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
 
   if (quote) {
     // If best quote was found, encode swap call
-    call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
+    call = abi.encodeFunctionData("swapTokenToTokenWithOptionalRoute", [
       token,
       500,
       quote
@@ -128,13 +112,16 @@ async function encodeSwapFromTokens(relayAddr: string, tokensQueue: string[], ba
       return call;
     }
   }
-  await storage.set("currStage", COMPOUND_STAGE); // Next stage is compound encoding
+  await storage.set("currStage", PROCESSING_COMPLETE); // After Swapping, AutoConverter is finished
   await storage.delete("balancesQueue");
   await storage.delete("tokensQueue");
   return call;
 }
 
 async function filterHighLiqTokens(relayAddr: string, highLiqTokens: string[], provider: Provider) {
+    const relay = new Contract(relayAddr, convAbi, provider);
+    const targetToken = await relay.token();
+    highLiqTokens = highLiqTokens.filter((e) => e != targetToken);
     let tokensQueue: string[] = [];
     let balancesQueue: string[] = [];
     for(const token of highLiqTokens) {
@@ -150,4 +137,3 @@ async function filterHighLiqTokens(relayAddr: string, highLiqTokens: string[], p
     }
     return {tokens: tokensQueue, balances: balancesQueue};
 }
-
