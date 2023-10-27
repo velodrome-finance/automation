@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 import Graph from "graphology";
+import { utils } from "ethers";
 import { chunk, isEmpty } from "lodash";
-import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
+import { BigNumber } from "@ethersproject/bignumber";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { ROUTER_ADDRESS, Route } from "./constants";
+import { VELO_LIBRARY_ADDRESS, ROUTER_ADDRESS, Route } from "./constants";
 
-const MAX_ROUTES = 70;
+const MAX_PRICE_IMPACT = "0.5";
+const MAX_ROUTES = 25;
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -62,6 +64,7 @@ export function getRoutes(
   pairsByAddress,
   fromToken: string,
   toToken: string,
+  highLiqTokens: string[],
   maxHops = 2
 ): Route[][] {
   if (!fromToken || !toToken) {
@@ -118,27 +121,38 @@ export function getRoutes(
     paths.push(...mappedPathSets);
   });
 
-  if(paths.length > MAX_ROUTES)
-      paths = filterPaths(paths, MAX_ROUTES);
-  return paths;
+  // Filters out High Liquidity Tokens and extra Routes if max length is exceeded
+  return filterPaths(paths, [...highLiqTokens, toToken], MAX_ROUTES);
 }
 
 // Filters out 2 Hop Paths until MaxLength is not surpassed
-function filterPaths(paths: Route[][], maxLength: number): Route[][] {
+function filterPaths(
+  paths: Route[][],
+  highLiqTokens: string[],
+  maxLength: number
+): Route[][] {
+  paths = paths.filter((routes: Route[]) =>
+    routes.every(
+      (r: Route) =>
+        highLiqTokens.includes(r.to.toLowerCase()) &&
+        highLiqTokens.includes(r.to.toLowerCase())
+    )
+  );
+  if (paths.length > maxLength) {
     const itemsToRemove: number = paths.length - maxLength;
     let filteredArray: Route[][] = [];
     let count = 0;
-    for(let i = 0; i < paths.length; i++) {
-        const path: Route[] = paths[i];
-        if(count < itemsToRemove) {
-          if(path.length == 1)
-              filteredArray.push(path);
-          else // Skip tokens with more than 1 hop
-              count++;
-        } else
-          filteredArray.push(path);
+    for (let i = 0; i < paths.length; i++) {
+      const path: Route[] = paths[i];
+      if (count < itemsToRemove) {
+        if (path.length == 1) filteredArray.push(path);
+        // Ignore tokens with more than 1 hop
+        else count++;
+      } else filteredArray.push(path);
     }
-    return filteredArray;
+    paths = filteredArray;
+  }
+  return paths;
 }
 
 /**
@@ -200,5 +214,49 @@ export async function fetchQuote(
     return null;
   }
 
-  return bestQuote.route;
+  return bestQuote;
+}
+
+/**
+ * Fetches and calculates the price impact for a quote
+ */
+export async function isPriceImpactTooHigh(quote, provider: Provider) {
+  const lib: Contract = new Contract(
+    VELO_LIBRARY_ADDRESS,
+    [
+      "function getTradeDiffs(uint[], address[], address[], bool[], address[]) view returns (uint[], uint[])",
+    ],
+    provider
+  );
+  const routes: Route[] = quote.route;
+  const amountsIn: BigNumber[] = quote.amountsOut.slice(0, routes.length);
+  let tokensIn: string[] = [];
+  let tokensOut: string[] = [];
+  let factories: string[] = [];
+  let isStable: boolean[] = [];
+  routes.forEach((r) => {
+    tokensOut.push(r.to);
+    tokensIn.push(r.from);
+    isStable.push(r.stable);
+    factories.push(r.factory);
+  });
+
+  const [tradeDiffsA, tradeDiffsB] = await lib.getTradeDiffs(
+    amountsIn,
+    tokensIn,
+    tokensOut,
+    isStable,
+    factories
+  );
+  let totalRatio: BigNumber = utils.parseUnits("1.0");
+
+  for (const i in tradeDiffsA) {
+    const a: BigNumber = tradeDiffsA[i];
+    const b: BigNumber = tradeDiffsB[i];
+    if (a.isZero()) totalRatio = utils.parseUnits("0");
+    else totalRatio = totalRatio.mul(b).div(a);
+  }
+
+  const priceImpact = utils.parseUnits("1.0").sub(totalRatio).mul(100);
+  return priceImpact.gt(utils.parseUnits(MAX_PRICE_IMPACT));
 }

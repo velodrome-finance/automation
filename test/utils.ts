@@ -51,6 +51,11 @@ export const storageSlots: StorageList = {
     slot: 3,
     decimals: 18,
   } as BalanceSlot,
+  op: {
+    address: "0x4200000000000000000000000000000000000042",
+    slot: 0,
+    decimals: 18,
+  } as BalanceSlot,
 };
 
 export async function deploy<Type>(

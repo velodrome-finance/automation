@@ -22,11 +22,14 @@ import assert from "assert";
 // Process Env Variables
 const ALCHEMY_ID = process.env.ALCHEMY_ID;
 assert.ok(ALCHEMY_ID, "no Alchemy ID in process.env");
-const INFURA_ID = process.env.INFURA_ID;
-assert.ok(INFURA_ID, "no Infura ID in process.env");
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
+
+const OPTIMISM_RPC = process.env.OPTIMISM_RPC;
+assert.ok(OPTIMISM_RPC, "no Optimism RPC url in process.env");
+const BLOCK_NUMBER = Number(process.env.KEEPER_TEST_BLOCK);
+assert.ok(BLOCK_NUMBER, "no Block Number set in process.env");
 
 // ================================= CONFIG =========================================
 const config: HardhatUserConfig = {
@@ -54,9 +57,8 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: "https://opt-mainnet.g.alchemy.com/v2/UV9ABpPS4L_YK3WvHGAEePtxGDUixAGD",
-        blockNumber: 110767452, // Before Claim
-        // blockNumber: 110767459, // After Claim
+        url: OPTIMISM_RPC,
+        blockNumber: BLOCK_NUMBER,
       },
     },
 
@@ -89,11 +91,6 @@ const config: HardhatUserConfig = {
     fantom: {
       chainId: 250,
       url: `https://rpcapi.fantom.network/`,
-      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
-    },
-    linea: {
-      url: `https://linea-mainnet.infura.io/v3/${INFURA_ID}`,
-      chainId: 59144,
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
     },
     optimism: {
