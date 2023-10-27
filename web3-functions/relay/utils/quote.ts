@@ -8,8 +8,6 @@ import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
 import { ROUTER_ADDRESS, Route } from "./constants";
 
-const MAX_ROUTES = 70;
-
 /**
  * Returns pairs graph and a map of pairs to their addresses
  *
@@ -83,7 +81,7 @@ export function getRoutes(
     return [];
   }
 
-  let paths: Route[][] = [];
+  const paths = [];
 
   graphPaths.map((pathSet) => {
     let mappedPathSets = [];
@@ -117,33 +115,13 @@ export function getRoutes(
     });
     paths.push(...mappedPathSets);
   });
-
-  if(paths.length > MAX_ROUTES)
-      paths = filterPaths(paths, MAX_ROUTES);
   return paths;
-}
-
-// Filters out 2 Hop Paths until MaxLength is not surpassed
-function filterPaths(paths: Route[][], maxLength: number): Route[][] {
-    const itemsToRemove: number = paths.length - maxLength;
-    let filteredArray: Route[][] = [];
-    let count = 0;
-    for(let i = 0; i < paths.length; i++) {
-        const path: Route[] = paths[i];
-        if(count < itemsToRemove) {
-          if(path.length == 1)
-              filteredArray.push(path);
-          else // Skip tokens with more than 1 hop
-              count++;
-        } else
-          filteredArray.push(path);
-    }
-    return filteredArray;
 }
 
 /**
  * Returns the best quote for a bunch of routes and an amount
  *
+ * TODO: We could split the `amount` between multiple routes
  * if the quoted amount is the same. This should theoretically limit
  * the price impact on a trade.
  */
@@ -161,17 +139,13 @@ export async function fetchQuote(
     ],
     provider
   );
+  amount = BigNumber.from(10).pow(10);
 
   let quoteChunks = [];
   // Split into chunks and get the route quotes...
   for (const routeChunk of routeChunks) {
     for (const route of routeChunk) {
-      let amountsOut;
-      try {
-        amountsOut = await router.getAmountsOut(amount, route);
-      } catch (err) {
-        amountsOut = [];
-      }
+      const amountsOut = await router.getAmountsOut(amount, route);
 
       // Ignore bad quotes...
       if (amountsOut && amountsOut.length >= 1) {
