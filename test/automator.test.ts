@@ -19,6 +19,7 @@ import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/outp
 import {
   seedRelayWithBalances,
   createAutoCompounder,
+  COMPOUNDER_TOKEN_ID,
   logW3fRunStats,
   setBalanceOf,
   storageSlots,
@@ -32,7 +33,6 @@ import { Registry } from "../typechain/relay-private/src";
 import {
   KEEPER_REGISTRY_ADDRESS,
   RELAY_REGISTRY_ADDRESS,
-  COMPOUNDER_TOKEN_ID,
   HOUR,
   DAY,
 } from "../web3-functions/relay-automation/utils/constants";
