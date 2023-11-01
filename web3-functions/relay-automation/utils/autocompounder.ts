@@ -58,16 +58,20 @@ export async function processAutoCompounder(
 
     if (stageName == COMPOUND_STAGE) {
       // If all swaps were encoded, next stage will be "compound"
-      const bal: BigNumber = await new Contract(
-        VELO,
-        ["function balanceOf(address) view returns (uint256)"],
-        provider
-      ).balanceOf(relayAddr);
-      if (!bal.isZero()) {
-        // if Relay has VELO, compound it
+      if (calls.length > 0) {
+        // A swap has happened
         calls.push(abi.encodeFunctionData("compound"));
-        if (calls.length > 1)
-          calls = [abi.encodeFunctionData("multicall", [calls])];
+        calls = [abi.encodeFunctionData("multicall", [calls])];
+      } else {
+        const bal: BigNumber = await new Contract(
+          VELO,
+          ["function balanceOf(address) view returns (uint256)"],
+          provider
+        ).balanceOf(relayAddr);
+        if (!bal.isZero()) {
+          // if Relay has VELO, compound it
+          calls.push(abi.encodeFunctionData("compound"));
+        }
       }
       await storage.set("currStage", PROCESSING_COMPLETE); // After compounding Relay is processed
     }

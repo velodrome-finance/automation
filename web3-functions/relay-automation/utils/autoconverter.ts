@@ -42,7 +42,6 @@ export async function processAutoConverter(
 
   // Process a Swap per Call
   if (stageName == SWAP_STAGE) {
-    // If no Swaps left, next call should be Compound
     const call = await encodeAutoConverterSwap(
       relayAddr,
       factoryAddr,
