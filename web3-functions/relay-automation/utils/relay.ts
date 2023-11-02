@@ -140,8 +140,20 @@ export async function updateStorage(
       // Process next Factory
       currFactory = factoriesQueue[0];
       factoriesQueue = factoriesQueue.slice(1);
+
+      // Get all Relays from Factory
+      relaysQueue = await (new Contract(
+          currFactory,
+          ["function relays() view returns (address[] memory)"],
+          provider
+      )).relays();
+      currRelay = relaysQueue[0] ?? "";
+      relaysQueue = relaysQueue.slice(1);
+
       await storage.set("currStage", CLAIM_STAGE);
+      await storage.set("currRelay", currRelay);
       await storage.set("currFactory", currFactory);
+      await storage.set("relaysQueue", JSON.stringify(relaysQueue));
       await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
     } else {
       // All Relays have been processed
