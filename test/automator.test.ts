@@ -185,7 +185,7 @@ describe("AutoCompounder Automation Script Tests", function () {
     let numberOfRuns = 0;
     let rpcCalls = 0;
     // Execute script until the automation is finished
-    while (!storageBefore.lastRunTimestamp) {
+    while (!storageBefore.keeperLastRun) {
       // Executes Script
       let run = await relayW3f.run({ storage: storageBefore });
       ({ result, storage: storageAfter } = run);
