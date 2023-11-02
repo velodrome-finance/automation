@@ -154,7 +154,7 @@ export async function updateStorage(
         storage.delete("isAutoCompounder"),
       ]);
       const timestamp = (await provider.getBlock("latest")).timestamp;
-      await storage.set("lastRunTimestamp", timestamp.toString());
+      await storage.set("keeperLastRun", timestamp.toString());
     }
   }
 }
