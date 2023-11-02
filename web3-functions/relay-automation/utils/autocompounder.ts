@@ -152,7 +152,7 @@ async function encodeSwapFromTokens(
   }
 
   if (quote) {
-    const slippage = (await isPriceImpactTooHigh(quote, provider)) ? 500 : 100;
+    const slippage = (await isPriceImpactTooHigh(quote, provider)) ? 500 : 300;
 
     // If best quote was found, encode swap call
     call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
