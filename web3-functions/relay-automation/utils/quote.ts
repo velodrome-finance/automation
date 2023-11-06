@@ -122,7 +122,7 @@ export function getRoutes(
   });
 
   // Filters out High Liquidity Tokens and extra Routes if max length is exceeded
-  return filterPaths(paths, [...highLiqTokens, toToken], MAX_ROUTES);
+  return filterPaths(paths, [...highLiqTokens, fromToken, toToken], MAX_ROUTES);
 }
 
 // Filters out 2 Hop Paths until MaxLength is not surpassed
@@ -135,7 +135,7 @@ function filterPaths(
     routes.every(
       (r: Route) =>
         highLiqTokens.includes(r.to.toLowerCase()) &&
-        highLiqTokens.includes(r.to.toLowerCase())
+        highLiqTokens.includes(r.from.toLowerCase())
     )
   );
   if (paths.length > maxLength) {
