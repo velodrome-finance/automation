@@ -31,7 +31,20 @@ export async function getClaimCalls(
     return [PROCESSING_COMPLETE];
   }
 
-  let rewards = await getRewards(mTokenId, relay.provider, offset, storage);
+  const rewards = await getRewards(mTokenId, relay.provider, offset, storage);
+
+  const queue: string = (await storage.get("claimedTokens")) ?? ""; // fetch previously claimed tokens
+  const prevTokens: string[] = queue.length != 0 ? JSON.parse(queue) : [];
+
+  const claimedTokens = [
+    ...new Set(
+      Object.values(rewards.fee)
+        .concat(Object.values(rewards.bribe))
+        .concat(prevTokens)
+        .flat()
+    ),
+  ];
+  await storage.set("claimedTokens", JSON.stringify(claimedTokens)); // update claimed tokens list
 
   // Claim Fees
   const feeCalls = encodeRewards(

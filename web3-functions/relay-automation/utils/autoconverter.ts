@@ -15,7 +15,9 @@ import {
   PROCESSING_COMPLETE,
   CLAIM_STAGE,
   SWAP_STAGE,
+  USDC_RELAY,
   TxData,
+  VELO,
 } from "../utils/constants";
 
 // Encode AutoConverter calls, one per Execution
@@ -69,23 +71,28 @@ async function encodeAutoConverterSwap(
 
   let queue: string = (await storage.get("tokensQueue")) ?? "";
   let tokensQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
-  queue = (await storage.get("balancesQueue")) ?? "";
-  let balancesQueue: string[] = queue.length != 0 ? JSON.parse(queue) : [];
   const highLiqTokens = await factory.highLiquidityTokens();
 
   // Set current Stage and Initial Tokens Queue
   if (tokensQueue.length == 0) {
     // processing of swaps hasn't started
+    queue = (await storage.get("claimedTokens")) ?? "";
+    let claimedTokens: string[] = queue.length != 0 ? JSON.parse(queue) : [];
+    if (relayAddr == USDC_RELAY)
+      // if foundation relay, do not swap velo
+      claimedTokens = claimedTokens.filter(
+        (addr: string) => addr.toLowerCase() !== VELO.toLowerCase()
+      );
+
+    tokensQueue = [...new Set(claimedTokens.concat(highLiqTokens))];
     await storage.set("currStage", SWAP_STAGE);
-    ({ tokens: tokensQueue, balances: balancesQueue } =
-      await filterHighLiqTokens(relayAddr, highLiqTokens, provider));
+    await storage.delete("claimedTokens");
   }
 
   // Process next Swap from Tokens Queue
   return await encodeSwapFromTokens(
     relayAddr,
     tokensQueue,
-    balancesQueue,
     highLiqTokens,
     storage,
     provider
@@ -96,7 +103,6 @@ async function encodeAutoConverterSwap(
 async function encodeSwapFromTokens(
   relayAddr: string,
   tokensQueue: string[],
-  balancesQueue: string[],
   highLiqTokens: string[],
   storage,
   provider: Provider
@@ -107,28 +113,40 @@ async function encodeSwapFromTokens(
   const abi = relay.interface;
   let call: string = "";
   // Process One Swap per Execution
-  const token = tokensQueue.shift();
+  const token = tokensQueue[0];
+  tokensQueue = tokensQueue.slice(1);
 
   // Fetch best Swap quote
   let quote;
-  if (token) {
-    const bal = BigNumber.from(balancesQueue.shift());
-    const targetToken = await relay.token();
-    quote = await fetchQuote(
-      getRoutes(
-        poolsGraph,
-        poolsByAddress,
-        token.toLowerCase(),
-        targetToken.toLowerCase(),
-        highLiqTokens.map((token) => token.toLowerCase())
-      ),
-      bal,
+  const targetToken = await relay.token();
+  if (token && token.toLowerCase() != targetToken.toLowerCase()) {
+    const bal: BigNumber = await new Contract(
+      token,
+      ["function balanceOf(address) view returns (uint256)"],
       provider
-    );
+    ).balanceOf(relayAddr);
+    if (!bal.isZero())
+      quote = await fetchQuote(
+        getRoutes(
+          poolsGraph,
+          poolsByAddress,
+          token.toLowerCase(),
+          targetToken.toLowerCase(),
+          highLiqTokens.map((token) => token.toLowerCase())
+        ),
+        bal,
+        provider
+      );
   }
 
   if (quote) {
-    const slippage = (await isPriceImpactTooHigh(quote, provider)) ? 500 : 300;
+    const isHighLiq = highLiqTokens
+      .concat([VELO.toLowerCase()])
+      .map((t) => t.toLowerCase())
+      .includes(token);
+    const slippage = (await isPriceImpactTooHigh(quote, isHighLiq, provider))
+      ? 500
+      : 200;
 
     // If best quote was found, encode swap call
     call = abi.encodeFunctionData("swapTokenToTokenWithOptionalRoute", [
@@ -136,41 +154,15 @@ async function encodeSwapFromTokens(
       slippage,
       quote.route,
     ]);
-
-    // update queues
-    if (tokensQueue.length != 0) {
-      // if there are still tokens in queue, continue
-      await storage.set("balancesQueue", JSON.stringify(balancesQueue));
-      await storage.set("tokensQueue", JSON.stringify(tokensQueue));
-      return call;
-    }
   }
-  await storage.set("currStage", PROCESSING_COMPLETE); // After Swapping, AutoConverter is finished
-  await storage.delete("balancesQueue");
-  await storage.delete("tokensQueue");
+  // update queues
+  if (tokensQueue.length != 0) {
+    // If there are still tokens in queue, continue
+    await storage.set("tokensQueue", JSON.stringify(tokensQueue));
+  } else {
+    // After Swapping all tokens, AutoConverter is finished
+    await storage.set("currStage", PROCESSING_COMPLETE);
+    await storage.delete("tokensQueue");
+  }
   return call;
-}
-
-async function filterHighLiqTokens(
-  relayAddr: string,
-  highLiqTokens: string[],
-  provider: Provider
-) {
-  const relay = new Contract(relayAddr, convAbi, provider);
-  const targetToken = await relay.token();
-  highLiqTokens = highLiqTokens.filter((e) => e != targetToken);
-  let tokensQueue: string[] = [];
-  let balancesQueue: string[] = [];
-  for (const token of highLiqTokens) {
-    const bal: BigNumber = await new Contract(
-      token,
-      ["function balanceOf(address) view returns (uint256)"],
-      provider
-    ).balanceOf(relayAddr);
-    if (!bal.isZero()) {
-      tokensQueue.push(token);
-      balancesQueue.push(bal.toString());
-    }
-  }
-  return { tokens: tokensQueue, balances: balancesQueue };
 }

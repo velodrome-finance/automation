@@ -14,6 +14,8 @@ export const RELAY_REGISTRY_ADDRESS =
   "0xe9F00f2e61CB0c6fb00A2e457546aCbF0fC303C2";
 export const VELO_LIBRARY_ADDRESS =
   "0x253CA289Cd921ba4a18C053C00a80c9660D508f8";
+export const USDC_RELAY =
+  "0x2cfFffa6b305104692d2B06CCF178ee28fe9DaA4";
 
 export const PROCESSING_COMPLETE: string = "complete";
 export const COMPOUND_STAGE: string = "compound";

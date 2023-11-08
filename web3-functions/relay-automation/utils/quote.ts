@@ -9,8 +9,11 @@ import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
 import { VELO_LIBRARY_ADDRESS, ROUTER_ADDRESS, Route } from "./constants";
 
-const MAX_PRICE_IMPACT = "0.5";
 const MAX_ROUTES = 25;
+const MAX_PRICE_IMPACT = "0.8";
+const MAX_STABLE_PRICE_IMPACT = "0.75";
+const MAX_LOWLIQ_PRICE_IMPACT = "0.21";
+const MAX_STABLE_LOWLIQ_PRICE_IMPACT = "0.15";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
@@ -220,7 +223,11 @@ export async function fetchQuote(
 /**
  * Fetches and calculates the price impact for a quote
  */
-export async function isPriceImpactTooHigh(quote, provider: Provider) {
+export async function isPriceImpactTooHigh(
+  quote,
+  isHighLiq: boolean,
+  provider: Provider
+) {
   const lib: Contract = new Contract(
     VELO_LIBRARY_ADDRESS,
     [
@@ -258,5 +265,13 @@ export async function isPriceImpactTooHigh(quote, provider: Provider) {
   }
 
   const priceImpact = utils.parseUnits("1.0").sub(totalRatio).mul(100);
-  return priceImpact.gt(utils.parseUnits(MAX_PRICE_IMPACT));
+  const stable = routes.some((route) => route.stable);
+  let maxPriceImpact;
+  if (isHighLiq)
+    maxPriceImpact = stable ? MAX_STABLE_PRICE_IMPACT : MAX_PRICE_IMPACT;
+  else
+    maxPriceImpact = stable
+      ? MAX_STABLE_LOWLIQ_PRICE_IMPACT
+      : MAX_LOWLIQ_PRICE_IMPACT;
+  return priceImpact.gt(utils.parseUnits(maxPriceImpact));
 }
