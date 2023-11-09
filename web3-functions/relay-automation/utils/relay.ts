@@ -7,8 +7,8 @@ import {
   RELAY_REGISTRY_ADDRESS,
   PROCESSING_COMPLETE,
   CLAIM_STAGE,
+  WEEK,
   HOUR,
-  DAY,
 } from "./constants";
 
 // Verifies if script can run in Current Epoch
@@ -17,12 +17,12 @@ export async function canRunInCurrentEpoch(
   storage
 ): Promise<boolean> {
   const timestamp = (await provider.getBlock("latest")).timestamp;
-  const startOfCurrentEpoch: number = timestamp - (timestamp % (7 * DAY));
+  const startOfCurrentEpoch: number = timestamp - (timestamp % WEEK);
   const keeperLastRun: number = Number(
     (await storage.get("keeperLastRun")) ?? ""
   );
   const startOfLastRunEpoch: number =
-    keeperLastRun - (keeperLastRun % (7 * DAY));
+    keeperLastRun - (keeperLastRun % WEEK);
 
   // Can only run Once per Epoch and only after its First Hour
   return (
