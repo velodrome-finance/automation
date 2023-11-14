@@ -5,7 +5,6 @@ import { BigNumber } from "@ethersproject/bignumber";
 
 import { abi as compAbi } from "../../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
 import {
-  isPriceImpactTooHigh,
   buildGraph,
   fetchQuote,
   getRoutes,
@@ -160,18 +159,10 @@ async function encodeSwapFromTokens(
   }
 
   if (quote) {
-    const isHighLiq = highLiqTokens
-      .concat([VELO.toLowerCase()])
-      .map((t) => t.toLowerCase())
-      .includes(token);
-    const slippage = (await isPriceImpactTooHigh(quote, isHighLiq, provider))
-      ? 500
-      : 200;
-
     // If best quote was found, encode swap call
     call = abi.encodeFunctionData("swapTokenToVELOWithOptionalRoute", [
       token,
-      slippage,
+      500,
       quote.route,
     ]);
   }
