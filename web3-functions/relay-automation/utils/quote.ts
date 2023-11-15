@@ -1,19 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 import Graph from "graphology";
-import { utils } from "ethers";
 import { chunk, isEmpty } from "lodash";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { VELO_LIBRARY_ADDRESS, ROUTER_ADDRESS, Route } from "./constants";
+import { ROUTER_ADDRESS, Route } from "./constants";
 
 const MAX_ROUTES = 25;
-const MAX_PRICE_IMPACT = "0.8";
-const MAX_STABLE_PRICE_IMPACT = "0.75";
-const MAX_LOWLIQ_PRICE_IMPACT = "0.21";
-const MAX_STABLE_LOWLIQ_PRICE_IMPACT = "0.15";
 
 /**
  * Returns pairs graph and a map of pairs to their addresses
