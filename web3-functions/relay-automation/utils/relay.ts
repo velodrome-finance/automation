@@ -7,8 +7,8 @@ import {
   RELAY_REGISTRY_ADDRESS,
   PROCESSING_COMPLETE,
   CLAIM_STAGE,
+  WEEK,
   HOUR,
-  DAY,
 } from "./constants";
 
 // Verifies if script can run in Current Epoch
@@ -17,12 +17,12 @@ export async function canRunInCurrentEpoch(
   storage
 ): Promise<boolean> {
   const timestamp = (await provider.getBlock("latest")).timestamp;
-  const startOfCurrentEpoch: number = timestamp - (timestamp % (7 * DAY));
+  const startOfCurrentEpoch: number = timestamp - (timestamp % WEEK);
   const keeperLastRun: number = Number(
     (await storage.get("keeperLastRun")) ?? ""
   );
   const startOfLastRunEpoch: number =
-    keeperLastRun - (keeperLastRun % (7 * DAY));
+    keeperLastRun - (keeperLastRun % WEEK);
 
   // Can only run Once per Epoch and only after its First Hour
   return (
@@ -136,25 +136,58 @@ export async function updateStorage(
       await storage.set("currStage", CLAIM_STAGE);
       await storage.set("currRelay", currRelay);
       await storage.set("relaysQueue", JSON.stringify(relaysQueue));
-    } else if (factoriesQueue.length != 0) {
-      // Process next Factory
-      currFactory = factoriesQueue[0];
-      factoriesQueue = factoriesQueue.slice(1);
-      await storage.set("currStage", CLAIM_STAGE);
-      await storage.set("currFactory", currFactory);
-      await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
     } else {
-      // All Relays have been processed
-      await Promise.all([
-        storage.delete("currStage"),
-        storage.delete("currRelay"),
-        storage.delete("relaysQueue"),
-        storage.delete("currFactory"),
-        storage.delete("factoriesQueue"),
-        storage.delete("isAutoCompounder"),
-      ]);
-      const timestamp = (await provider.getBlock("latest")).timestamp;
-      await storage.set("lastRunTimestamp", timestamp.toString());
+      // Find next Factory with Relays
+      while (true) {
+        if (factoriesQueue.length != 0) {
+          // Process next Factory
+          currFactory = factoriesQueue[0];
+          factoriesQueue = factoriesQueue.slice(1);
+
+          // Get all Relays from Factory
+          relaysQueue = await new Contract(
+            currFactory,
+            ["function relays() view returns (address[] memory)"],
+            provider
+          ).relays();
+          // Skip Factories with no Relays
+          if (relaysQueue.length == 0) continue;
+
+          currRelay = relaysQueue[0] ?? "";
+          relaysQueue = relaysQueue.slice(1);
+
+          // Verify if Relays are AutoCompounders
+          const token = await new Contract(
+            currRelay,
+            ["function token() view returns (address)"],
+            provider
+          ).token();
+          const isAutoCompounder = JSON.stringify(
+            token == jsonConstants.v2.VELO
+          );
+
+          await storage.set("currStage", CLAIM_STAGE);
+          await storage.set("currRelay", currRelay);
+          await storage.set("currFactory", currFactory);
+          await storage.set("isAutoCompounder", isAutoCompounder);
+          await storage.set("relaysQueue", JSON.stringify(relaysQueue));
+          await storage.set("factoriesQueue", JSON.stringify(factoriesQueue));
+          break;
+        } else {
+          // All Relays have been processed
+          await Promise.all([
+            storage.delete("currStage"),
+            storage.delete("currRelay"),
+            storage.delete("relaysQueue"),
+            storage.delete("currFactory"),
+            storage.delete("factoriesQueue"),
+            storage.delete("isAutoCompounder"),
+          ]);
+          const timestamp = (await provider.getBlock("latest")).timestamp;
+          await storage.set("keeperLastRun", timestamp.toString());
+          break;
+        }
+      }
     }
   }
 }

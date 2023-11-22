@@ -19,6 +19,9 @@ import {
 
 import { Web3FunctionExecSuccess } from "@gelatonetwork/web3-functions-sdk";
 
+export const COMPOUNDER_TOKEN_ID = 19490;
+export const CONVERTER_TOKEN_ID = 19491;
+
 export type BalanceSlot = {
   address: string;
   slot: number;

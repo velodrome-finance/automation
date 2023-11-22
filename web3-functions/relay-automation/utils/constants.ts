@@ -5,17 +5,16 @@ import { BigNumber } from "@ethersproject/bignumber";
 
 import lp_sugar_abi from "../abis/lp_sugar.json";
 
-export const LP_SUGAR_ADDRESS = "0x4d996e294b00ce8287c16a2b9a4e637eca5c939f";
+export const LP_SUGAR_ADDRESS = "0x6eDCAb198EAdDBDA3865f813A83F6bC9012F16e9";
 export const ROUTER_ADDRESS = "0xa062ae8a9c5e11aaa026fc2670b0d65ccc8b2858";
 export const VELO = "0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db";
 export const KEEPER_REGISTRY_ADDRESS =
-  "0xDB8f1909FcA704597Eb186fea188ECc6b728332B";
+  "0xfe97A8c1C90c829a246914f9576cbdA6D26A5AA2";
 export const RELAY_REGISTRY_ADDRESS =
-  "0x1C33BA7a5F4F2E80622d603A9E5e54294410f6d9";
+  "0xe9F00f2e61CB0c6fb00A2e457546aCbF0fC303C2";
 export const VELO_LIBRARY_ADDRESS =
   "0x253CA289Cd921ba4a18C053C00a80c9660D508f8";
-export const COMPOUNDER_TOKEN_ID = 19041;
-export const CONVERTER_TOKEN_ID = 19042;
+export const USDC_RELAY = "0x2cfFffa6b305104692d2B06CCF178ee28fe9DaA4";
 
 export const PROCESSING_COMPLETE: string = "complete";
 export const COMPOUND_STAGE: string = "compound";

@@ -19,20 +19,20 @@ import jsonOutput from "../lib/relay-private/lib/contracts/script/constants/outp
 import {
   seedRelayWithBalances,
   createAutoConverter,
+  CONVERTER_TOKEN_ID,
   logW3fRunStats,
   setBalanceOf,
   storageSlots,
 } from "./utils";
 import { IVotingEscrow } from "../typechain/relay-private/lib/contracts/contracts/interfaces/IVotingEscrow";
 import { IERC20 } from "../typechain/openzeppelin-contracts/contracts/token/ERC20/IERC20";
-import { abi as erc20Abi } from "../web3-functions/relay-automation/abis/erc20.json";
 import { AutoConverterFactory } from "../typechain/relay-private/src/autoconverter";
 import { Registry } from "../typechain/relay-private/src";
+import { abi as erc20Abi } from "../test/erc20.json";
 
 import {
   KEEPER_REGISTRY_ADDRESS,
   RELAY_REGISTRY_ADDRESS,
-  CONVERTER_TOKEN_ID,
   HOUR,
   DAY,
 } from "../web3-functions/relay-automation/utils/constants";
@@ -194,7 +194,7 @@ describe("AutoConverter Automation Script Tests", function () {
     let numberOfRuns = 0;
     let rpcCalls = 0;
     // Execute script until the automation is finished
-    while (!storageBefore.lastRunTimestamp) {
+    while (!storageBefore.keeperLastRun) {
       // Executes Script
       let run = await relayW3f.run({ storage: storageBefore });
       ({ result, storage: storageAfter } = run);

@@ -6,4 +6,4 @@
 	url = https://github.com/openzeppelin/openzeppelin-contracts
 [submodule "lib/relay-private"]
 	path = lib/relay-private
-	url = https://github.com/lib/relay-private
+	url = https://github.com/velodrome-finance/relay-private

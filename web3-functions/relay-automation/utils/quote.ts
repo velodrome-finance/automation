@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: BUSL-1.1
 import Graph from "graphology";
-import { utils } from "ethers";
 import { chunk, isEmpty } from "lodash";
 import { Contract } from "@ethersproject/contracts";
 import { Provider } from "@ethersproject/providers";
 import { BigNumber } from "@ethersproject/bignumber";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { VELO_LIBRARY_ADDRESS, ROUTER_ADDRESS, Route } from "./constants";
+import { ROUTER_ADDRESS, Route } from "./constants";
 
-const MAX_PRICE_IMPACT = "0.5";
 const MAX_ROUTES = 25;
 
 /**
@@ -122,7 +120,7 @@ export function getRoutes(
   });
 
   // Filters out High Liquidity Tokens and extra Routes if max length is exceeded
-  return filterPaths(paths, [...highLiqTokens, toToken], MAX_ROUTES);
+  return filterPaths(paths, [...highLiqTokens, fromToken, toToken], MAX_ROUTES);
 }
 
 // Filters out 2 Hop Paths until MaxLength is not surpassed
@@ -135,7 +133,7 @@ function filterPaths(
     routes.every(
       (r: Route) =>
         highLiqTokens.includes(r.to.toLowerCase()) &&
-        highLiqTokens.includes(r.to.toLowerCase())
+        highLiqTokens.includes(r.from.toLowerCase())
     )
   );
   if (paths.length > maxLength) {
@@ -215,48 +213,4 @@ export async function fetchQuote(
   }
 
   return bestQuote;
-}
-
-/**
- * Fetches and calculates the price impact for a quote
- */
-export async function isPriceImpactTooHigh(quote, provider: Provider) {
-  const lib: Contract = new Contract(
-    VELO_LIBRARY_ADDRESS,
-    [
-      "function getTradeDiffs(uint[], address[], address[], bool[], address[]) view returns (uint[], uint[])",
-    ],
-    provider
-  );
-  const routes: Route[] = quote.route;
-  const amountsIn: BigNumber[] = quote.amountsOut.slice(0, routes.length);
-  let tokensIn: string[] = [];
-  let tokensOut: string[] = [];
-  let factories: string[] = [];
-  let isStable: boolean[] = [];
-  routes.forEach((r) => {
-    tokensOut.push(r.to);
-    tokensIn.push(r.from);
-    isStable.push(r.stable);
-    factories.push(r.factory);
-  });
-
-  const [tradeDiffsA, tradeDiffsB] = await lib.getTradeDiffs(
-    amountsIn,
-    tokensIn,
-    tokensOut,
-    isStable,
-    factories
-  );
-  let totalRatio: BigNumber = utils.parseUnits("1.0");
-
-  for (const i in tradeDiffsA) {
-    const a: BigNumber = tradeDiffsA[i];
-    const b: BigNumber = tradeDiffsB[i];
-    if (a.isZero()) totalRatio = utils.parseUnits("0");
-    else totalRatio = totalRatio.mul(b).div(a);
-  }
-
-  const priceImpact = utils.parseUnits("1.0").sub(totalRatio).mul(100);
-  return priceImpact.gt(utils.parseUnits(MAX_PRICE_IMPACT));
 }
