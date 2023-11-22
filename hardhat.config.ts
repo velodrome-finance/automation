@@ -26,6 +26,8 @@ assert.ok(ALCHEMY_ID, "no Alchemy ID in process.env");
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 
+const BASE_RPC = process.env.BASE_RPC;
+assert.ok(BASE_RPC, "no Base RPC url in process.env");
 const OPTIMISM_RPC = process.env.OPTIMISM_RPC;
 assert.ok(OPTIMISM_RPC, "no Optimism RPC url in process.env");
 const BLOCK_NUMBER = Number(process.env.KEEPER_TEST_BLOCK);
@@ -71,6 +73,11 @@ const config: HardhatUserConfig = {
     arbitrum: {
       chainId: 42161,
       url: "https://arb1.arbitrum.io/rpc",
+      accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
+    },
+    base: {
+      chainId: 8453,
+      url: "https://base.llamarpc.com",
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
     },
     baseGoerli: {
