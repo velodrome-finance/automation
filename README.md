@@ -3,7 +3,7 @@
 This repository contains the scripts designed to automate the Velodrome 
 ecosystem using Gelato's Web3-Functions SDK.
 
-Currently this contains the Relay Keeper automaion, which is designed
+Currently, this contains the Relay Keeper automation, which is designed
 to execute all necessary Keeper actions after an Epoch Flip.
 These actions include:
 - Claiming of all available Rewards for a Relay;
@@ -21,7 +21,7 @@ Install foundry dependencies with `forge install`.
 
 ## Testing
 
-Tests are executed using hardhat, with `yarn test`.
+Tests are executed using Hardhat, with `yarn test`.
 
 ## Licensing
 
