@@ -14,10 +14,10 @@ resulting in a larger position.
 
 ## Installation
 
-This repository is a hybrid hardhat and foundry repository.
+This repository is a hybrid Hardhat and Foundry repository.
 
-Install hardhat dependencies with `yarn install`.
-Install foundry dependencies with `forge install`.
+Install Hardhat dependencies, with `yarn install`.
+Install Foundry dependencies, with `forge install`.
 
 ## Testing
 
