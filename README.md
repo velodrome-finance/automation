@@ -3,6 +3,14 @@
 This repository contains the scripts designed to automate the Velodrome 
 ecosystem using Gelato's Web3-Functions SDK.
 
+Currently this contains the Relay Keeper automaion, which is designed
+to execute all necessary Keeper actions after an Epoch Flip.
+These actions include:
+- Claiming of all available Rewards for a Relay;
+- Swapping claimed rewards to the Relay's destination token;
+- If the Relay is an AutoCompounder, Compounding of swapped tokens also
+takes place, depositing the generated Rewards back into the Relay's veNFT,
+resulting in a larger position.
 
 ## Installation
 
