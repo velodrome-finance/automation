@@ -13,8 +13,7 @@ Install foundry dependencies with `forge install`.
 
 ## Testing
 
-This repository uses Hardhat for testing.
-Run hardhat tests with `yarn test`.
+Tests are executed using hardhat, with `yarn test`.
 
 ## Licensing
 
