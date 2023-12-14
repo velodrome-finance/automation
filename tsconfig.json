@@ -1,24 +1,31 @@
 {
-  "extends": "@tsconfig/recommended/tsconfig.json",
-  "compilerOptions": {
-    "noImplicitAny": true,
-    "allowSyntheticDefaultImports": true,
-    "downlevelIteration": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    "typeRoots": ["./node_modules/@types"],
-    "outDir": "dist"
-  },
-  "files": ["hardhat.config.ts"],
-  "include": [
-    "hardhat",
-    "deploy",
-    "scripts",
-    "src",
-    "test",
-    "typechain",
-    "web3-functions"
-  ],
-  "exclude": ["node_modules"]
+    "compilerOptions": {
+        "allowSyntheticDefaultImports": true,
+        "downlevelIteration": true,
+        "moduleResolution": "node",
+        "noImplicitAny": true,
+        "outDir": "dist",
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "typeRoots": [
+            "./node_modules/@types"
+        ]
+    },
+    "exclude": [
+        "node_modules",
+        "web3-actions"
+    ],
+    "extends": "@tsconfig/recommended/tsconfig.json",
+    "files": [
+        "hardhat.config.ts"
+    ],
+    "include": [
+        "hardhat",
+        "deploy",
+        "scripts",
+        "src",
+        "test",
+        "typechain",
+        "web3-functions"
+    ]
 }

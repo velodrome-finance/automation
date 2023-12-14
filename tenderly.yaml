@@ -1,0 +1,13 @@
+account_id: ""
+actions:
+  airtonn/project:
+    runtime: v2
+    sources: web3-actions
+    specs:
+      example:
+        description: This is just an example, but you can publish this action.
+        function: example:blockHelloWorldFn
+        trigger:
+          type: block
+        execution_type: sequential
+project_slug: ""

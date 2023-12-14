@@ -1264,6 +1264,18 @@
   resolved "https://registry.yarnpkg.com/@stablelib/wipe/-/wipe-1.0.1.tgz#d21401f1d59ade56a62e139462a97f104ed19a36"
   integrity sha512-WfqfX/eXGiAd3RJe4VU2snh/ZPwtSjLG4ynQ/vYzvghTh7dHFcI1wl+nrkWG6lGhukOxOsUHfv8dUXr58D0ayg==
 
+"@tenderly/actions-test@^0.2.12":
+  version "0.2.12"
+  resolved "https://registry.yarnpkg.com/@tenderly/actions-test/-/actions-test-0.2.12.tgz#2364a1f4b5e55f2228a9ea1abe23f6000af0bf6c"
+  integrity sha512-V6ylnYMXVpsf/SY8eAG2/pN9ycCRkbyJ0x6hHdkM4Z+oA9Ma3Pr8ocbAfP65gPFsosGpQZT+s1/s6GV1n6+rIg==
+  dependencies:
+    "@tenderly/actions" "^0.2.12"
+
+"@tenderly/actions@^0.2.12":
+  version "0.2.12"
+  resolved "https://registry.yarnpkg.com/@tenderly/actions/-/actions-0.2.12.tgz#91818ba52634c1ca6794a1a5686c9133b54b76a9"
+  integrity sha512-dhu2emCKzbwVQI3D77O0bTZ4sz6DqlyEIybG8ApQqbalhMesvhfAm9nQytrZvRpxF8m3X9/TDnzBOTc1DjO2sg==
+
 "@trufflesuite/bigint-buffer@1.1.10":
   version "1.1.10"
   resolved "https://registry.yarnpkg.com/@trufflesuite/bigint-buffer/-/bigint-buffer-1.1.10.tgz#a1d9ca22d3cad1a138b78baaf15543637a3e1692"
