@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { Contract } from "ethers";
-import { processClaims } from "../common-utils/rewards";
+import { executeClaims } from "../common-utils/helpers";
 import {
   RewardContractInfo,
   RewardsToClaim,
@@ -19,7 +19,7 @@ export async function claimRewards(
 
   const rewards: RewardsToClaim = await getRewards(mTokenId, lpSugarContract);
 
-  const claimedTokens = await processClaims(relay, rewards);
+  const claimedTokens = await executeClaims(relay, rewards);
   return claimedTokens;
 }
 

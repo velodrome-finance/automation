@@ -9,7 +9,7 @@ import {
   getFactoriesFromRegistry,
   getRelaysFromFactories,
   canRunInCurrentEpoch,
-} from "./common-utils/relay";
+} from "./common-utils/helpers";
 
 export const optimisticKeeperFn: ActionFn = async (
   context: Context,

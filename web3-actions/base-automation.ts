@@ -9,7 +9,7 @@ import {
   getFactoriesFromRegistry,
   getRelaysFromFactories,
   canRunInCurrentEpoch,
-} from "./common-utils/relay";
+} from "./common-utils/helpers";
 
 export const baseKeeperFn: ActionFn = async (
   context: Context,

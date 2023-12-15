@@ -4,7 +4,7 @@ import { Contract, Wallet } from "ethers";
 import { abi as compAbi } from "../abis/AutoCompounder.json";
 import { abi as convAbi } from "../abis/AutoConverter.json";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
-import { executeSwaps } from "../common-utils/relay";
+import { executeSwaps } from "../common-utils/helpers";
 import { claimRewards, getPools } from "./rewards";
 import {
   VELO_EXCLUDED_RELAYS,

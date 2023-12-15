@@ -2,7 +2,7 @@
 import { Contract } from "ethers";
 import { RewardsToClaim } from "../common-utils/constants";
 
-export async function processClaims(
+export async function executeClaims(
   relay: Contract,
   rewards: RewardsToClaim,
   batchSize = 3
