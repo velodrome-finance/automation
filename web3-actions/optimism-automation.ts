@@ -1,12 +1,15 @@
 import { ActionFn, Context, Event, PeriodicEvent } from "@tenderly/actions";
 import { JsonRpcProvider, Wallet } from "ethers";
 
-import { RELAY_REGISTRY_ADDRESS, Relay, VELO } from "./op-utils/op-constants";
+import { RELAY_REGISTRY_ADDRESS, VELO } from "./op-utils/op-constants";
+import { Relay } from "./common-utils/constants";
 
 import {
   getFactoriesFromRegistry,
   getRelaysFromFactories,
   canRunInCurrentEpoch,
+} from "./common-utils/relay";
+import {
   processRelay,
 } from "./op-utils/relay";
 
