@@ -4,10 +4,20 @@ actions:
     runtime: v2
     sources: web3-actions
     specs:
-      example:
-        description: This is just an example, but you can publish this action.
-        function: example:blockHelloWorldFn
+      optimismKeeper:
+        description: This Action automates all Keeper Functions on Optimism.
+        function: optimism-automation.ts:optimisticKeeperFn
         trigger:
-          type: block
-        execution_type: sequential
+          type: periodic
+        periodic:
+          cron: '* 1-2 * * 4'
+        execution_type: parallel
+      baseKeeper:
+        description: This Action automates all Keeper Functions on Base.
+        function: base-automation.ts:baseKeeperFn
+        trigger:
+          type: periodic
+        periodic:
+          cron: '* 1-2 * * 4'
+        execution_type: parallel
 project_slug: ""
