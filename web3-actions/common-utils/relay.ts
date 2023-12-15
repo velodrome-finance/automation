@@ -126,7 +126,6 @@ export async function getRelaysFromFactories(
 }
 
 // TODO: Probably remove this for deploy
-// TODO: move to common-utils
 export async function logSwapBalances(
   relay: Contract,
   tokensToSwap: string[],
