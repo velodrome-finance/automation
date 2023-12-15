@@ -14,20 +14,7 @@ export const optimisticKeeperFn: ActionFn = async (
   context: Context,
   _: Event
 ) => {
-
-  //TODO: Specific for testing VVV
-  const provider = new JsonRpcProvider(
-    "https://rpc.tenderly.co/fork/c9424fdc-aa62-412a-9ae6-dd244c953b72"
-  );
-
-  // const checkpoint = await provider.send("evm_snapshot", []);
-
-  // const CHECKPOINT = "61ad5e2f-8507-4219-a5ef-25114fd87f27";
-  // console.log("Reverting to the initial fork state.");
-  // await provider.send("evm_revert", [CHECKPOINT]);
-  // console.log(
-  //   "========================================================================"
-  // );
+  const provider = new JsonRpcProvider(process.env.TENDERLY_OP_FORK);
   // TODO: Specific for testing ^^^
 
   // NOTE: EXECUTION STARTS BELOW
@@ -36,7 +23,7 @@ export const optimisticKeeperFn: ActionFn = async (
   // const optimisticGatewayURL = context.gateways.getGateway(Network.OPTIMISTIC);
   // const provider = new JsonRpcProvider(optimisticGatewayURL);
 
-  const privateKey = await context.secrets.get('PRIVATE_KEY');
+  const privateKey = await context.secrets.get("PRIVATE_KEY");
   const wallet = new Wallet(privateKey, provider);
 
   // Check if can run in current timestamp
@@ -52,7 +39,6 @@ export const optimisticKeeperFn: ActionFn = async (
       );
       // Get All Relay Information from Factories
       let relayQueue: Relay[] = await getRelaysFromFactories(factories, wallet);
-      relayQueue = [relayQueue[1], relayQueue[relayQueue.length - 1]]; // TODO: ONLY PROCESSING THESE TWO RELAYS FOR NOW
 
       await context.storage.putJson("relays", relayQueue);
     } else {

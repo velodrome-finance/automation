@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { Contract, Wallet } from "ethers";
 
-//TODO: move this to abis folder
-import { abi as compAbi } from "../../artifacts/lib/relay-private/src/autoCompounder/AutoCompounder.sol/AutoCompounder.json";
-import { abi as convAbi } from "../../artifacts/lib/relay-private/src/autoConverter/AutoConverter.sol/AutoConverter.json";
+import { abi as compAbi } from "../abis/AutoCompounder.json";
+import { abi as convAbi } from "../abis/AutoConverter.json";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
 import { claimRewards, getPools } from "./rewards";
 import {
+  VELO_EXCLUDED_RELAYS,
   LP_SUGAR_ADDRESS,
   LP_SUGAR_ABI,
   VELO,
   Relay,
   WEEK,
   HOUR,
-  VELO_EXCLUDED_RELAYS,
 } from "./op-constants";
 
 export async function processRelay(
@@ -209,11 +208,8 @@ async function getQuotes(
               console.log(`Did not fetch quote for token ${token}`);
             }
           }
-          // resolve(quote);
         } catch (error) {
           console.log("Error while fetching Quote.");
-          // //TODO: delete resolve comments if not necessary
-          // resolve(quote);
         } finally {
           resolve(quote);
         }
@@ -263,13 +259,9 @@ async function executeSwaps(
           else {
             console.log("Revert: Unknown Error Code");
           }
-          // console.log(err);
           console.log(
             "------------------------------------------------------------------"
           );
-          //TODO: Do i need reject?
-          // TODO: do i need two resolves? maybe pull it inside finally block
-          // resolve(tx);
         } finally {
           resolve(tx);
         }
@@ -279,7 +271,6 @@ async function executeSwaps(
   return [txs, failedTokens];
 }
 
-// TODO: Update this to match new storage
 // Verifies if script can run in Current Epoch
 export async function canRunInCurrentEpoch(
   provider,

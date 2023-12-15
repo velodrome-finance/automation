@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { ethers } from "ethers";
 
-import lp_sugar_abi from "../abis/lp_sugar.json";
+import lp_sugar_abi from "../abis/lp_sugar_op.json";
 
 // OPT ADDRS
 export const LP_SUGAR_ADDRESS = "0x6eDCAb198EAdDBDA3865f813A83F6bC9012F16e9";
