@@ -1,14 +1,14 @@
 import { ActionFn, Context, Event } from "@tenderly/actions";
 import { JsonRpcProvider, Wallet } from "ethers";
 
-import { RELAY_REGISTRY_ADDRESS, Relay } from "./utils/op-constants";
+import { RELAY_REGISTRY_ADDRESS, Relay } from "./op-utils/op-constants";
 
 import {
   processRelay,
   getFactoriesFromRegistry,
   getRelaysFromFactories,
   canRunInCurrentEpoch,
-} from "./utils/relay";
+} from "./op-utils/relay";
 
 export const optimisticKeeperFn: ActionFn = async (
   context: Context,
