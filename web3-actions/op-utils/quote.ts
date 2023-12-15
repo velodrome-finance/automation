@@ -4,7 +4,8 @@ import { chunk, isEmpty } from "lodash";
 import { Contract, Provider } from "ethers";
 import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 
-import { ROUTER_ADDRESS, Route } from "./op-constants";
+import { Route } from "../common-utils/constants";
+import { ROUTER_ADDRESS } from "./op-constants";
 
 const MAX_ROUTES = 25;
 
