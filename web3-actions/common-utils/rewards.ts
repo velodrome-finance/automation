@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 import { Contract } from "ethers";
 import {
-  RewardContractInfo,
   RewardsToClaim,
-  ZERO_ADDRESS,
-  Reward,
-  Pool,
 } from "../common-utils/constants";
 
 export async function processClaims(
