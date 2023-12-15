@@ -3,15 +3,13 @@ import { JsonRpcProvider, Wallet } from "ethers";
 
 import { RELAY_REGISTRY_ADDRESS, VELO } from "./op-utils/op-constants";
 import { Relay } from "./common-utils/constants";
+import { processRelay } from "./op-utils/relay";
 
 import {
   getFactoriesFromRegistry,
   getRelaysFromFactories,
   canRunInCurrentEpoch,
 } from "./common-utils/relay";
-import {
-  processRelay,
-} from "./op-utils/relay";
 
 export const optimisticKeeperFn: ActionFn = async (
   context: Context,
@@ -43,7 +41,11 @@ export const optimisticKeeperFn: ActionFn = async (
         wallet
       );
       // Get All Relay Information from Factories
-      let relayQueue: Relay[] = await getRelaysFromFactories(factories, VELO, wallet);
+      let relayQueue: Relay[] = await getRelaysFromFactories(
+        factories,
+        VELO,
+        wallet
+      );
 
       await context.storage.putJson("relays", relayQueue);
     } else {

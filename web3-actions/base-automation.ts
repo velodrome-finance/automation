@@ -2,6 +2,7 @@ import { ActionFn, Context, Event, PeriodicEvent } from "@tenderly/actions";
 import { JsonRpcProvider, Wallet } from "ethers";
 
 import { RELAY_REGISTRY_ADDRESS, AERO } from "./base-utils/base-constants";
+import { processRelay } from "./base-utils/relay";
 import { Relay } from "./common-utils/constants";
 
 import {
@@ -9,11 +10,11 @@ import {
   getRelaysFromFactories,
   canRunInCurrentEpoch,
 } from "./common-utils/relay";
-import {
-  processRelay,
-} from "./base-utils/relay";
 
-export const baseKeeperFn: ActionFn = async (context: Context, event: Event) => {
+export const baseKeeperFn: ActionFn = async (
+  context: Context,
+  event: Event
+) => {
   const provider = new JsonRpcProvider(process.env.TENDERLY_BASE_FORK);
   const periodicEvent = event as PeriodicEvent;
   // TODO: Specific for testing ^^^
@@ -40,7 +41,11 @@ export const baseKeeperFn: ActionFn = async (context: Context, event: Event) => 
         wallet
       );
       // Get All Relay Information from Factories
-      let relayQueue: Relay[] = await getRelaysFromFactories(factories, AERO, wallet);
+      let relayQueue: Relay[] = await getRelaysFromFactories(
+        factories,
+        AERO,
+        wallet
+      );
 
       await context.storage.putJson("relays", relayQueue);
     } else {
