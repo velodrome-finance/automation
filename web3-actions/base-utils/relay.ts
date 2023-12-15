@@ -4,8 +4,7 @@ import { Contract, Wallet } from "ethers";
 import { abi as compAbi } from "../abis/AutoCompounder.json";
 import { abi as convAbi } from "../abis/AutoConverter.json";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
-//TODO: remove logswapbalances
-import { executeSwaps, logSwapBalances } from "../common-utils/relay";
+import { executeSwaps } from "../common-utils/relay";
 import { claimRewards, getPools } from "./rewards";
 import {
   AERO_EXCLUDED_RELAYS,
@@ -44,19 +43,9 @@ export async function processRelay(
     try {
       const tx = await relay.compound();
       await tx.wait();
-      console.log("Compounding has happened successfully.");
-      console.log(tx.hash);
     } catch (err) {
       console.log("Error while compounding tokens.");
     }
-
-    //TODO: Logging for debugging purposes
-    const aeroBal = await new Contract(
-      AERO,
-      ["function balanceOf(address) view returns (uint256)"],
-      relay.runner
-    ).balanceOf(relay.target.toString());
-    console.log(`AERO Bal = ${aeroBal}`);
   }
 }
 
@@ -89,11 +78,8 @@ async function processSwaps(
       (addr: string) => addr.toLowerCase() !== AERO.toLowerCase()
     );
 
-  // TODO: Logging for debugging purposes
-  await logSwapBalances(relay, tokensToSwap, targetToken);
-
   // Getting quotes for all Swaps
-  let [quotes, failedQuotes] = await getQuotes(
+  let [quotes, _] = await getQuotes(
     relayAddr,
     lpSugarContract,
     highLiqTokens,
@@ -103,28 +89,12 @@ async function processSwaps(
   const claimFunction = isAutoCompounder
     ? "swapTokenToVELOWithOptionalRoute"
     : "swapTokenToTokenWithOptionalRoute";
-  let [txs, failedSwaps] = await executeSwaps(
+  await executeSwaps(
     relay,
     tokensToSwap,
     quotes,
     claimFunction
   );
-
-  console.log("All swaps processed.");
-  console.log("These are the tokens that could not be swapped:");
-  console.log(failedQuotes.concat(failedSwaps));
-  console.log(
-    `TokensToSwap: ${tokensToSwap.length} Failed Swaps: ${
-      failedQuotes.concat(failedSwaps).length
-    }`
-  );
-
-  // TODO: Logging for debugging purposes
-  await logSwapBalances(relay, tokensToSwap, targetToken);
-
-  console.log("All transactions successfully executed.");
-  console.log("Tx hashes:");
-  console.log(txs.filter(Boolean).map((tx) => tx.hash));
 }
 
 async function getQuotes(
@@ -134,11 +104,9 @@ async function getQuotes(
   tokensToSwap: string[],
   targetToken: string
 ) {
-  console.log("Will fetch pools now...");
   const [poolsGraph, poolsByAddress] = buildGraph(
     await getPools(lpSugarContract)
   );
-  console.log("All pools fetched");
 
   const balances: BigInt[] = await Promise.all(
     tokensToSwap.map((addr) =>
@@ -152,7 +120,6 @@ async function getQuotes(
 
   let failedTokens: string[] = [];
   const provider = lpSugarContract.runner?.provider;
-  console.log("Will fetch all quotes now...");
   const quotes = await Promise.all(
     tokensToSwap.map((token, i) => {
       return new Promise(async (resolve, _) => {

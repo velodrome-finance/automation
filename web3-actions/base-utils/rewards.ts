@@ -17,14 +17,7 @@ export async function claimRewards(
 ): Promise<string[]> {
   const mTokenId = await relay.mTokenId();
 
-  console.log("Will get rewards now");
   const rewards: RewardsToClaim = await getRewards(mTokenId, lpSugarContract);
-  console.log("These are the fetched rewards");
-  console.log(
-    `Will claim ${Object.keys(rewards.fee).length} fees and ${
-      Object.keys(rewards.bribe).length
-    } bribes`
-  );
 
   const claimedTokens = await processClaims(relay, rewards);
   return claimedTokens;

@@ -7,7 +7,6 @@ import { allSimpleEdgeGroupPaths } from "graphology-simple-path";
 import { Route } from "../common-utils/constants";
 import { ROUTER_ADDRESS } from "./base-constants";
 
-//TODO: should i also increase this on op?
 const MAX_ROUTES = 50;
 
 /**

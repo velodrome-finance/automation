@@ -4,8 +4,7 @@ import { Contract, Wallet } from "ethers";
 import { abi as compAbi } from "../abis/AutoCompounder.json";
 import { abi as convAbi } from "../abis/AutoConverter.json";
 import { buildGraph, fetchQuote, getRoutes } from "./quote";
-//TODO: remove logswapbalances
-import { executeSwaps, logSwapBalances } from "../common-utils/relay";
+import { executeSwaps } from "../common-utils/relay";
 import { claimRewards, getPools } from "./rewards";
 import {
   VELO_EXCLUDED_RELAYS,
@@ -44,19 +43,9 @@ export async function processRelay(
     try {
       const tx = await relay.compound();
       await tx.wait();
-      console.log("Compounding has happened successfully.");
-      console.log(tx.hash);
     } catch (err) {
       console.log("Error while compounding tokens.");
     }
-
-    //TODO: Logging for debugging purposes
-    const veloBal = await new Contract(
-      VELO,
-      ["function balanceOf(address) view returns (uint256)"],
-      relay.runner
-    ).balanceOf(relay.target.toString());
-    console.log(`VELO Bal = ${veloBal}`);
   }
 }
 
@@ -89,11 +78,8 @@ async function processSwaps(
       (addr: string) => addr.toLowerCase() !== VELO.toLowerCase()
     );
 
-  // TODO: Logging for debugging purposes
-  await logSwapBalances(relay, tokensToSwap, targetToken);
-
   // Getting quotes for all Swaps
-  let [quotes, failedQuotes] = await getQuotes(
+  let [quotes, _] = await getQuotes(
     relayAddr,
     lpSugarContract,
     highLiqTokens,
@@ -103,28 +89,12 @@ async function processSwaps(
   const claimFunction = isAutoCompounder
     ? "swapTokenToVELOWithOptionalRoute"
     : "swapTokenToTokenWithOptionalRoute";
-  let [txs, failedSwaps] = await executeSwaps(
+  await executeSwaps(
     relay,
     tokensToSwap,
     quotes,
     claimFunction
   );
-
-  console.log("All swaps processed.");
-  console.log("These are the tokens that could not be swapped:");
-  console.log(failedQuotes.concat(failedSwaps));
-  console.log(
-    `TokensToSwap: ${tokensToSwap.length} Failed Swaps: ${
-      failedQuotes.concat(failedSwaps).length
-    }`
-  );
-
-  // TODO: Logging for debugging purposes
-  await logSwapBalances(relay, tokensToSwap, targetToken);
-
-  console.log("All transactions successfully executed.");
-  console.log("Tx hashes:");
-  console.log(txs.filter(Boolean).map((tx) => tx.hash));
 }
 
 async function getQuotes(

@@ -9,10 +9,6 @@ export async function executeSwaps(
   swapFunction: string
 ) {
   let failedTokens: string[] = [];
-  console.log("Will submit Swap Transactions now...");
-  console.log(
-    "------------------------------------------------------------------"
-  );
   const txs = await Promise.all(
     quotes.map((quote, i) => {
       return new Promise(async (resolve, _) => {
@@ -27,8 +23,6 @@ export async function executeSwaps(
                 quote.route
               );
               await tx.wait();
-            } else {
-              console.log("TOKENS DO NOT MATCH");
             }
         } catch (err) {
           failedTokens.push(token);
@@ -38,12 +32,8 @@ export async function executeSwaps(
           if (errStr.includes("0x42301c23"))
             console.log("Revert: InsufficientOutputAmount()");
           else if (errStr.includes("0xa932492f")) console.log("Revert: K()");
-          else {
+          else
             console.log("Revert: Unknown Error Code");
-          }
-          console.log(
-            "------------------------------------------------------------------"
-          );
         } finally {
           resolve(tx);
         }
@@ -123,30 +113,4 @@ export async function getRelaysFromFactories(
   });
 
   return (await Promise.all(promises)).flat();
-}
-
-// TODO: Probably remove this for deploy
-export async function logSwapBalances(
-  relay: Contract,
-  tokensToSwap: string[],
-  targetToken: string
-) {
-  const newBalances: BigInt[] = await Promise.all(
-    tokensToSwap.map((addr) =>
-      new Contract(
-        addr,
-        ["function balanceOf(address) view returns (uint256)"],
-        relay.runner
-      ).balanceOf(relay.target.toString())
-    )
-  );
-  for (const i in tokensToSwap) {
-    console.log(`Token ${tokensToSwap[i]}, Balance = ${newBalances[i]}`);
-  }
-  const targetBal = await new Contract(
-    targetToken,
-    ["function balanceOf(address) view returns (uint256)"],
-    relay.runner
-  ).balanceOf(relay.target.toString());
-  console.log(`TargetToken Bal = ${targetBal}`);
 }
