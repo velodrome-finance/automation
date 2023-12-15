@@ -1,20 +1,21 @@
-import { ActionFn, Context, Event } from "@tenderly/actions";
+import { ActionFn, Context, Event, PeriodicEvent } from "@tenderly/actions";
 import { JsonRpcProvider, Wallet } from "ethers";
 
-import { RELAY_REGISTRY_ADDRESS, Relay } from "./op-utils/op-constants";
+import { RELAY_REGISTRY_ADDRESS, Relay, VELO } from "./op-utils/op-constants";
 
 import {
-  processRelay,
   getFactoriesFromRegistry,
   getRelaysFromFactories,
   canRunInCurrentEpoch,
+  processRelay,
 } from "./op-utils/relay";
 
 export const optimisticKeeperFn: ActionFn = async (
   context: Context,
-  _: Event
+  event: Event
 ) => {
   const provider = new JsonRpcProvider(process.env.TENDERLY_OP_FORK);
+  const periodicEvent = event as PeriodicEvent;
   // TODO: Specific for testing ^^^
 
   // NOTE: EXECUTION STARTS BELOW
@@ -27,7 +28,8 @@ export const optimisticKeeperFn: ActionFn = async (
   const wallet = new Wallet(privateKey, provider);
 
   // Check if can run in current timestamp
-  const canRun = await canRunInCurrentEpoch(provider, context.storage);
+  const timestamp = BigInt(Math.round(periodicEvent.time.getTime() / 1000));
+  const canRun = await canRunInCurrentEpoch(timestamp, context.storage);
   if (canRun) {
     let relays: Relay[] = await context.storage.getJson("relays");
     // If there are no relays to process, fetch and store them for next Execution
@@ -38,7 +40,7 @@ export const optimisticKeeperFn: ActionFn = async (
         wallet
       );
       // Get All Relay Information from Factories
-      let relayQueue: Relay[] = await getRelaysFromFactories(factories, wallet);
+      let relayQueue: Relay[] = await getRelaysFromFactories(factories, VELO, wallet);
 
       await context.storage.putJson("relays", relayQueue);
     } else {
@@ -49,9 +51,6 @@ export const optimisticKeeperFn: ActionFn = async (
       // Update storage
       if (Object.keys(relays).length === 0) {
         // If processing last relay, processing is complete
-        const timestamp = BigInt(
-          (await provider.getBlock("latest"))?.timestamp ?? 0n
-        );
         await context.storage.putBigInt("keeperLastRun", timestamp);
         await context.storage.putJson("relays", {});
       } else {

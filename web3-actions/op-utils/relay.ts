@@ -247,7 +247,6 @@ async function executeSwaps(
             } else {
               console.log("TOKENS DO NOT MATCH");
             }
-          // resolve(tx);
         } catch (err) {
           failedTokens.push(token);
           console.log(`Did not swap token ${token}`);
@@ -271,14 +270,12 @@ async function executeSwaps(
   return [txs, failedTokens];
 }
 
+// TODO: move to common-utils
 // Verifies if script can run in Current Epoch
 export async function canRunInCurrentEpoch(
-  provider,
+  timestamp,
   storage
 ): Promise<boolean> {
-  const timestamp = BigInt(
-    (await provider.getBlock("latest"))?.timestamp ?? 0n
-  );
   const keeperLastRun = (await storage.getBigInt("keeperLastRun")) ?? 0n;
   const startOfCurrentEpoch = timestamp - (timestamp % WEEK);
   const startOfLastRunEpoch = keeperLastRun - (keeperLastRun % WEEK);
@@ -305,9 +302,11 @@ export async function getFactoriesFromRegistry(
   return await relayFactoryRegistry.getAll();
 }
 
+// TODO: move to common-utils
 // Retrieve all Relays from the list of Factories
 export async function getRelaysFromFactories(
   factories: string[],
+  compoundingToken: string,
   wallet: Wallet
 ): Promise<Relay[]> {
   const promises: Promise<Relay[]>[] = factories.map((factoryAddr) => {
@@ -328,7 +327,7 @@ export async function getRelaysFromFactories(
         )
       );
       const isAutoCompounder: boolean = tokens.every(
-        (token) => token.toLowerCase() == VELO.toLowerCase()
+        (token) => token.toLowerCase() == compoundingToken.toLowerCase()
       );
       const relayInfos: Relay[] = relays.map((addr: string, i: number) => {
         return {
