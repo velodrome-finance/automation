@@ -89,12 +89,7 @@ async function processSwaps(
   const claimFunction = isAutoCompounder
     ? "swapTokenToVELOWithOptionalRoute"
     : "swapTokenToTokenWithOptionalRoute";
-  await executeSwaps(
-    relay,
-    tokensToSwap,
-    quotes,
-    claimFunction
-  );
+  await executeSwaps(relay, tokensToSwap, quotes, claimFunction);
 }
 
 async function getQuotes(

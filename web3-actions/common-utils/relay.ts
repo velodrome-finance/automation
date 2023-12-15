@@ -32,8 +32,7 @@ export async function executeSwaps(
           if (errStr.includes("0x42301c23"))
             console.log("Revert: InsufficientOutputAmount()");
           else if (errStr.includes("0xa932492f")) console.log("Revert: K()");
-          else
-            console.log("Revert: Unknown Error Code");
+          else console.log("Revert: Unknown Error Code");
         } finally {
           resolve(tx);
         }
