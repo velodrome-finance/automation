@@ -44,7 +44,7 @@ export const optimisticKeeperFn: ActionFn = async (
       await context.storage.putJson("relays", relayQueue);
     } else {
       // Get next relay to process, store updated queue
-      const relay: Relay = relays[0] ?? "";
+      const relay: Relay = relays[0];
       relays = relays.slice(1);
 
       // Update storage
@@ -59,13 +59,14 @@ export const optimisticKeeperFn: ActionFn = async (
 
       // Process fetched Relay
       try {
-        await processRelay(
-          relay.address,
-          relay.factory,
-          relay.targetToken,
-          relay.isAutoCompounder,
-          wallet
-        );
+        if(relay)
+          await processRelay(
+            relay.address,
+            relay.factory,
+            relay.targetToken,
+            relay.isAutoCompounder,
+            wallet
+          );
       } catch (err) {
         console.error(err);
       }

@@ -78,12 +78,12 @@ export async function getPools(lpSugarContract: Contract, chunkSize = 75) {
           );
           allPools.push(
             ...pools.map(
-              ([lp, stable, token0, token1, factory]): Pool => ({
-                lp,
-                stable,
-                token0,
-                token1,
-                factory,
+              ([_lp, _stable, _token0, _token1, _factory]): Pool => ({
+                address: _lp,
+                stable: _stable,
+                token0: _token0,
+                token1: _token1,
+                factory: _factory,
               })
             )
           );
