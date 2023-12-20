@@ -3,11 +3,13 @@
   "compilerOptions": {
     "module": "commonjs",
     "noImplicitReturns": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "noUnusedLocals": true,
     "outDir": "out",
     "rootDir": "",
     "sourceMap": true,
-    "strict": true,
+    "strict": false,
     "target": "es2020"
   },
   "exclude": ["**/*.spec.ts"],
