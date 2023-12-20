@@ -12,7 +12,7 @@ export const RELAY_REGISTRY_ADDRESS =
 export const AERO_EXCLUDED_RELAYS = [
   "0x48A6a8D403a58ecCc70d4d57347F801D4E182564", // Ouranous Foundation
   "0xC875b3Dae5B0C371bc8cf9deD64868b78ac47587", // Echinacea Foundation
-  "0x6a941fE89Cac5f440bb14e5286AD3E38ca3F2d39" // Public Goods Funding
+  "0x6a941fE89Cac5f440bb14e5286AD3E38ca3F2d39", // Public Goods Funding
 ];
 
 export const LP_SUGAR_ABI = lp_sugar_abi;
