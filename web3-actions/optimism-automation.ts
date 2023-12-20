@@ -1,4 +1,4 @@
-import { ActionFn, Context, Event, PeriodicEvent } from "@tenderly/actions";
+import { ActionFn, Context, Event, Network, PeriodicEvent } from "@tenderly/actions";
 import { JsonRpcProvider, Wallet } from "ethers";
 
 import { RELAY_REGISTRY_ADDRESS, VELO } from "./op-utils/op-constants";
@@ -15,15 +15,9 @@ export const optimisticKeeperFn: ActionFn = async (
   context: Context,
   event: Event
 ) => {
-  const provider = new JsonRpcProvider(process.env.TENDERLY_OP_FORK);
+  const optimisticGatewayURL = context.gateways.getGateway(Network.OPTIMISTIC);
+  const provider = new JsonRpcProvider(optimisticGatewayURL);
   const periodicEvent = event as PeriodicEvent;
-  // TODO: Specific for testing ^^^
-
-  // NOTE: EXECUTION STARTS BELOW
-
-  // TODO: Uncomment this for deployment
-  // const optimisticGatewayURL = context.gateways.getGateway(Network.OPTIMISTIC);
-  // const provider = new JsonRpcProvider(optimisticGatewayURL);
 
   const privateKey = await context.secrets.get("PRIVATE_KEY");
   const wallet = new Wallet(privateKey, provider);
