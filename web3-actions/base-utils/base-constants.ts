@@ -15,4 +15,5 @@ export const AERO_EXCLUDED_RELAYS = [
   "0x6a941fE89Cac5f440bb14e5286AD3E38ca3F2d39", // Public Goods Funding
 ];
 
+export const KEEPER_LAST_RUN = "keeperLastRunBase";
 export const LP_SUGAR_ABI = lp_sugar_abi;

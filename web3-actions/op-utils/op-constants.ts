@@ -13,4 +13,5 @@ export const VELO_EXCLUDED_RELAYS = [
   "0x00621858D5Dc273FCF204260265bA6E66C34b5E7", // Foundation USDC Relay
 ];
 
+export const KEEPER_LAST_RUN = "keeperLastRunOP";
 export const LP_SUGAR_ABI = lp_sugar_abi;

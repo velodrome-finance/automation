@@ -84,9 +84,10 @@ export async function executeClaims(
 // Verifies if script can run in Current Epoch
 export async function canRunInCurrentEpoch(
   timestamp,
-  storage
+  storage,
+  lastRunKey
 ): Promise<boolean> {
-  const keeperLastRun = (await storage.getBigInt("keeperLastRun")) ?? 0n;
+  const keeperLastRun = (await storage.getBigInt(lastRunKey)) ?? 0n;
   const startOfCurrentEpoch = timestamp - (timestamp % WEEK);
   const startOfLastRunEpoch = keeperLastRun - (keeperLastRun % WEEK);
 

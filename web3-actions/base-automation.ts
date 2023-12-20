@@ -1,7 +1,7 @@
 import { ActionFn, Context, Event, Network, PeriodicEvent } from "@tenderly/actions";
 import { JsonRpcProvider, Wallet } from "ethers";
 
-import { RELAY_REGISTRY_ADDRESS, AERO } from "./base-utils/base-constants";
+import { RELAY_REGISTRY_ADDRESS, KEEPER_LAST_RUN, AERO } from "./base-utils/base-constants";
 import { processRelay } from "./base-utils/relay";
 import { Relay } from "./common-utils/constants";
 
@@ -24,7 +24,7 @@ export const baseKeeperFn: ActionFn = async (
 
   // Check if can run in current timestamp
   const timestamp = BigInt(Math.round(periodicEvent.time.getTime() / 1000));
-  const canRun = await canRunInCurrentEpoch(timestamp, context.storage);
+  const canRun = await canRunInCurrentEpoch(timestamp, context.storage, KEEPER_LAST_RUN);
   if (canRun) {
     let relays: Relay[] = await context.storage.getJson("relays");
     // If there are no relays to process, fetch and store them for next Execution
@@ -50,7 +50,7 @@ export const baseKeeperFn: ActionFn = async (
       // Update storage
       if (Object.keys(relays).length === 0) {
         // If processing last relay, processing is complete
-        await context.storage.putBigInt("keeperLastRun", timestamp);
+        await context.storage.putBigInt(KEEPER_LAST_RUN, timestamp);
         await context.storage.putJson("relays", {});
       } else {
         // If there are more relays to process, store them
