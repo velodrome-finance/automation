@@ -1,23 +1,23 @@
-account_id: ""
+account_id: "velodrome-finance"
+project_slug: "v2"
 actions:
-  airtonn/project:
+  velodrome-finance/v2:
     runtime: v2
     sources: web3-actions
     specs:
       optimismKeeper:
         description: This Action automates all Keeper Functions on Optimism.
-        function: optimism-automation.ts:optimisticKeeperFn
+        function: optimism-automation:optimisticKeeperFn
+        execution_type: parallel
         trigger:
           type: periodic
-        periodic:
-          cron: '* 1-2 * * 4'
-        execution_type: parallel
+          periodic:
+            cron: '* 10-11 * * 4'
       baseKeeper:
         description: This Action automates all Keeper Functions on Base.
-        function: base-automation.ts:baseKeeperFn
+        function: base-automation:baseKeeperFn
+        execution_type: parallel
         trigger:
           type: periodic
-        periodic:
-          cron: '* 1-2 * * 4'
-        execution_type: parallel
-project_slug: ""
+          periodic:
+            cron: '* 10-11 * * 4'
