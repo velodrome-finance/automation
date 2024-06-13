@@ -77,7 +77,7 @@ const config: HardhatUserConfig = {
     },
     base: {
       chainId: 8453,
-      url: "https://base.llamarpc.com",
+      url: BASE_RPC,
       accounts: PRIVATE_KEY ? [PRIVATE_KEY] : [],
     },
     baseGoerli: {
